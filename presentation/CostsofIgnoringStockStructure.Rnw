@@ -1,0 +1,91 @@
+\documentclass[a4paper,english]{article}
+
+\usepackage[sfmath]{kpfonts}
+\renewcommand*\familydefault{\sfdefault}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage{babel}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,       % false: boxed links; true: colored links
+    linkcolor=blue,        % color of internal links
+    citecolor=red,         % color of links to bibliography
+    filecolor=blue,        % color of file links
+    urlcolor=blue          % color of external links
+}
+
+\usepackage{color}
+\usepackage[rgb]{xcolor}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{natbib}
+\usepackage{authblk}
+
+\geometry{verbose,a4paper,tmargin=3cm,bmargin=2cm,lmargin=2cm,rmargin=3cm}
+\setlength{\parskip}{\medskipamount}
+\setlength{\parindent}{0pt}
+
+\usepackage{Sweave}
+
+\begin{document}
+
+\DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=2em}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=2em}
+\DefineVerbatimEnvironment{Scode}{Verbatim}{xleftmargin=2em}
+\fvset{listparameters={\setlength{\topsep}{0pt}}}
+\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}}
+
+\section*{Coverpage}
+
+% set up R environment
+<<echo=FALSE, results=hide>>=
+library(RColorBrewer)
+library(lattice)
+library(xtable)
+@
+%%library(Hmisc)
+
+
+<<echo=FALSE>>=
+cat("Document build date:", date(), "\n")
+cat("Working directory :\n", "    ", getwd(), "\n")
+cat("Current contents of .GlobalEnv:\n\n")
+cat("    ", if (length(ls(all = TRUE)) == 0) "<empty>" else ls(all = TRUE))
+cat("\nSession information:\n\n")
+sessionInfo()
+@
+
+\section*{Material in references file}
+
+\cite{Rue_Held.2005} \cite{R.2012}, \cite{INLA.2009}, and some more ...
+
+
+\title{\textbf{\LARGE The Cost of Ignoring Stock Structure}}
+
+\author[1,*]{Colin P. Millar}
+\author[1]{Iago Mosqueira}
+\author[1]{Ernesto Jardim}
+\author[1]{Chato Osio}
+\affil[1]{European Commission, Joint Research Centre, IPSC / Maritime Affairs Unit, 21027 Ispra (VA), Italy}
+\affil[*]{Corresponding author \href{mailto:colin.millar@jrc.ec.europa.eu}{colin.millar@jrc.ec.europa.eu}, +39 0332 785208}
+
+\date{}
+
+\maketitle
+
+%% the text of the paper
+
+\begin{abstract}
+  Not yet.
+\end{abstract}
+
+
+\bibliographystyle{chicago}
+\bibliography{ices}
+
+\end{document}
