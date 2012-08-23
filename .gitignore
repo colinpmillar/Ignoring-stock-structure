@@ -25,3 +25,8 @@
 *.maf
 *.mtc
 *.mtc0
+*.project
+*.settings
+*.metadata
+*.tar.gz
+.gitignore~

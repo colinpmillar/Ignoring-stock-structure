@@ -1,42 +1,26 @@
-\name{StockStructure-package}
-\alias{StockStructure-package}
-\alias{StockStructure}
 \docType{package}
-\title{
-What the package does (short line)
-~~ package title ~~
-}
+\name{StockStructure-package}
+\alias{StockStructure}
+\alias{StockStructure-package}
+\title{Functions to investige stock structure in fish}
 \description{
-More about what it does (maybe more than one line)
-~~ A concise (1-5 lines) description of the package ~~
+  Functions to investige stock structure in fish
 }
 \details{
-\tabular{ll}{
-Package: \tab StockStructure\cr
-Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2012-08-23\cr
-License: \tab What license is it under?\cr
-}
-~~ An overview of how to use the package, including the most important ~~
-~~ functions ~~
+  \tabular{ll}{ Package: \tab StockStructure \cr Type: \tab
+  Package \cr Version: \tab 0.1 \cr Date: \tab 2012-08-23
+  \cr License: \tab GPL (>= 2) \cr LazyLoad: \tab yes \cr }
 }
 \author{
-Who wrote it
+  Colin Millar \email{colin.millar@jrc.ec.europa.eu}
 
-Maintainer: Who to complain to <yourfault@somewhere.net>
-~~ The author and/or maintainer of the package ~~
+  Iago Mosquiera \email{iago.mosquiera@jrc.ec.europa.eu}
 }
 \references{
-~~ Literature or other references for background information ~~
+  none
 }
-~~ Optionally other standard keywords, one per line, from file KEYWORDS in ~~
-~~ the R documentation directory ~~
-\keyword{ package }
 \seealso{
-~~ Optional links to other man pages, e.g. ~~
-~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
+  \code{\link{paste}}
 }
-\examples{
-~~ simple examples of the most important functions ~~
-}
+\keyword{package}
+
