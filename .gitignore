@@ -30,3 +30,4 @@
 *.metadata
 *.tar.gz
 .gitignore~
+*.Rnw.bak

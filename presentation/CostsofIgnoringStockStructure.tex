@@ -48,7 +48,7 @@
 
 \begin{Schunk}
 \begin{Soutput}
-Document build date: Thu Aug 23 10:35:56 2012 
+Document build date: Thu Aug 23 16:29:28 2012 
 \end{Soutput}
 \begin{Soutput}
 Working directory :
@@ -94,8 +94,8 @@ loaded via a namespace (and not attached):
 \title{\textbf{\LARGE The Cost of Ignoring Stock Structure}}
 
 \author[1,*]{Colin P. Millar}
-\author[1]{Iago Mosqueira}
 \author[1]{Ernesto Jardim}
+\author[1]{Iago Mosqueira}
 \author[1]{Chato Osio}
 \affil[1]{European Commission, Joint Research Centre, IPSC / Maritime Affairs Unit, 21027 Ispra (VA), Italy}
 \affil[*]{Corresponding author \href{mailto:colin.millar@jrc.ec.europa.eu}{colin.millar@jrc.ec.europa.eu}, +39 0332 785208}
@@ -107,9 +107,44 @@ loaded via a namespace (and not attached):
 %% the text of the paper
 
 \begin{abstract}
-  Not yet.
+  This simulation study investigates the robustness of harvest control rule (HCR) reference points to misspecification of stock structure. Specifically the case where there are multiple sub populations exploited by one fishery. Three factors are investigated: initial population size, population productivity and population mixing. This allows appropriate HCR reference points to be suggested for varying degrees of stock structuring and productivity. From this we show the potential costs of ignoring stock structure in HCRs (in terms of long term yield and probability of stock crash), but also highlight the potential gains of including good estimates of population mixing and productivity parameters in management plans. \\
+
+\paragraph{Keywords:} management, reference points, stock structure, sub populations, productivity, stochastic simulation
 \end{abstract}
 
+
+\section*{Brainstorming}
+
+Here is what we are doing in a nutshell
+\begin{itemize}
+  \item HCR rule robustness
+  \item investigate initial population size, productivity, mixing
+  \item Assess costs = long term yeild and risk to substock collapse
+  \item Do we do better if we know the mixing and relative abundances?
+\end{itemize}
+
+We have two populations that are fished have properties outlines in figure \ref{fig:brainstorm}.  It has life history parameters that define its natural mortality, recruitment and fecundity; it has an initial starting size and age distribution; it has a portion of the fishing mortality and it has an area.  Area is important when it comes to observing the populations as the combined survey index will be a weighted average of the survey indices from each population, and the weights will depend on the area.  
+
+\begin{figure}[htb]
+\centering
+\includegraphics[scale=.5]{BrainStorm}
+\caption{The definition of a population}
+\label{fig:brainstorm}
+\end{figure}
+
+First thoughts are to keep it simple and 2 levels per variable:
+
+\begin{table}[H]
+    \begin{tabular}{l|ll}
+        \hline
+        Mixing                  & low             & high           \\
+        productivity            & low             & high           \\ 
+        Initial population size & under exploited & over exploited \\
+        \hline
+    \end{tabular}
+\end{table}
+
+This means we can apply to a range of stocks chosen from the wklife list.  
 
 \bibliographystyle{chicago}
 \bibliography{ices}
