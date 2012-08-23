@@ -12,3 +12,5 @@ install(pkg)
 library(StockStructure)
 
 helloWorld(882346)
+
+data(wklife.stk)

@@ -7,6 +7,11 @@ Author: Colin Millar
 Maintainer: Colin Millar <colin.millar@jrc.ec.europa.eu>
 Description: More about what it does (maybe more than one line)
 License: GPL (>= 2)
+Depends:
+    FLCore,
+    FLAssess,
+    FLAdvice
 Collate:
     'StockStructure-package.r'
     'tools.r'
+    'wklife-data.r'
