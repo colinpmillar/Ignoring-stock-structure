@@ -60,9 +60,7 @@ cat("\nSession information:\n\n")
 sessionInfo()
 @
 
-\section*{Material in references file}
-
-\cite{Rue_Held.2005} \cite{R.2012}, \cite{INLA.2009}, and some more ...
+\cite{R.2012}
 
 
 \title{\textbf{\LARGE The Cost of Ignoring Stock Structure}}
@@ -87,48 +85,54 @@ sessionInfo()
 \end{abstract}
 
 
-\section*{Brainstorming!}
+\section*{The Idea}
 
-Here is what we are doing in a nutshell
+Here is what we are doing in a nutshell in a kind of order
 \begin{itemize}
-  \item HCR rule robustness
-  \item investigate initial population size, productivity, mixing
-  \item Assess costs = long term yeild and risk to substock collapse
-  \item Do we do better if we know the mixing and relative abundances?
+  \item Firstly we are investigating HCR rule robustness
+  \item we assess robustness in terms of 'costs' by which we mean long term yield and risk to sub-stock collapse
+  \item Robustness to what - we investigate different initial population sizes, different productivity, different levels of mixing
+  \item Finally we tie it up by trying some HCR that include some info on the productivity,  proportion of F etc and seeing if we do better.
 \end{itemize}
 
-We have two populations that are fished have properties outlines in figure \ref{fig:brainstorm}.  It has life history parameters that define its natural mortality, recruitment and fecundity; it has an initial starting size and age distribution; it has a portion of the fishing mortality and it has an area.  Area is important when it comes to observing the populations as the combined survey index will be a weighted average of the survey indices from each population, and the weights will depend on the area.  
 
-\begin{figure}[htb]
-\centering
-\includegraphics[scale=.5]{BrainStorm}
-\caption{The definition of a population}
-\label{fig:brainstorm}
-\end{figure}
+Here I have just listed the points that have come up, 
 
-First thoughts are to keep it simple and 2 levels per variable:
+\begin{enumerate}
+  \item We are looking for generic conclusions about the interaction between sub-stock structure and HCRs.  To get a wide perspective we use a subset of the WKLIFE stocks dataset
+  \item Since we are fitting to several stocks, we want to keep the scenarios to a minimum so, scenarios will be restricted to low or high productivity, low or high mixing, initial population size - i though we could use Ernesto's code that simulates different phases (developing fishery, exploited fishery, recovering fishery) and we could choose two points on these simulations as starting points and call them underexploited, overexploited.
+  \item We need to make some assumptions to simplify the set up.  These are 
+  \begin{itemize} 
+    \item whether the stocks cover an equal area or not and of not what the ratio is - this has implications on the combined survey index.
+    \item Same observation error for survey and catch, set cv to 15\%
+    \item use an ibts demersal like q function...
+    \item use a trawl like selectivity for $F_a$
+    \item Use the ICES MSY HCR with $B_{trigger}$ and $F_{target}$
+  \end{itemize}
+  \item We have two populations that mix.  Some definitions: a sub-stock is a physical unit, a sub-population is group of fish with the same characteristics, sub-stocks are associated with a sub-population.  Sub-populations can be spread across sub-stocks by mixing.  Two ways to model mixing are 
+    \begin{enumerate}
+      \item If a fish moves stocks it takes on the characteristics of the associated population (growth, weight, LH params etc), this is like a hypothesis that traits are due only to the environment
+      \item If a fish moves it keeps its traits and so we need to keep track of the numbers of each sup-population in each sub-stock, like a hypothesis that traits are due only to the genetics (but what with some assumptions about mixing during spawning and the mixing of traits).
+    \end{enumerate}
+  These are in a way opposites but are both easily implemented.  I think we should use 2) and work with 4 FLStocks, or 2 FLstocks with 2 units in each stock.
+  \item Mixing applies at the sub-stock level.
+  \item We assume F and M occur throughout the year, recruitment happens at the start of the year and mixing happens at the end of the year.  Artificial but much easier to implement than allowing mixing to occur throughout the year....
+  \item What happens during spawning?
+    \begin{itemize}
+      \item sub-population fidelity: recruitment models are fitted to sub-populations, then recruits go into the sub-stock associated with their sub-population.
+    \end{itemize}
+    This models the situation where fish go pack to where they spawned.  Each spawning locations feeds into a single sub-stock.  Sub-stock-spawing is separated in space and/or time.
+  \item We investigate the consequences of knowing something about stock structure by running scenarios with an 'informed HCR'.  This is one where we know the something about the productivity and the relative abundance of each sub-stock.  Or Where we know the F relative to F_{msy} for each sub-stock or sub-population.
+\end{enumerate}
 
-\begin{table}[H]
-    \begin{tabular}{l|ll}
-        \hline
-        Mixing                  & low             & high           \\
-        productivity            & low             & high           \\ 
-        Initial population size & under exploited & over exploited \\
-        \hline
-    \end{tabular}
-\end{table}
+%\section{Notes and musings}
 
-This means we can apply to a range of stocks chosen from the wklife list and look for general conclusions.
+%we could impose increased m on fish that are not in the correct sub-stock.  This would help maintain sub-stock structure.  
 
-\subsection{implementation}
+%We could condition the model by finding parameters that ensure sub-stock structure.
 
-\begin{itemize}
-  \item each population will have a stock object.
-  \item Z occurs continuously through the year
-  \item recruitment happens at the end of the year
-  \item mixing happens instantaneously at some point in the year
-  \item end would be easiest
-\end{itemize}  
+
+
 
 \bibliographystyle{chicago}
 \bibliography{ices}
