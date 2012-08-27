@@ -1,2 +1,6 @@
+export(getFunctions)
 export(helloWorld)
+exportMethods(an)
+exportMethods(mseSumm)
+export(mse)
 import(Matrix)
