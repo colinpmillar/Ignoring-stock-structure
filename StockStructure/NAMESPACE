@@ -1,6 +1,7 @@
 export(getFunctions)
 export(helloWorld)
 exportMethods(an)
+exportMethods(collapseUnit)
 exportMethods(mseSumm)
 export(mse)
 import(Matrix)

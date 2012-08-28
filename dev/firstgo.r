@@ -27,68 +27,96 @@ rm(pkg)
 #	advYr - advice year, the year for which advice is being given (loop)     
 #--------------------------------------------------------------------
 #####################################################################
-
+options(width = 150)
 library(StockStructure)
 data(wklife.stk)
+
+library(FLa4a)
 
 #====================================================================
 # Simulation settings
 #====================================================================
 
-nits   <- 10                # number of iterations
-iniyr  <- 2000              # first year in projections
-npyr   <- 50                # number of years to project
-lastyr <- iniyr + npyr - 1  # last year in projections
-srsd   <- 0.3 			    # sd for S/R
+nits     <- 10                   # number of iterations
+iniyr    <- 2000                 # first year in projections
+npyr     <- 50                   # number of years to project
+lastyr   <- iniyr + npyr - 1     # last year in projections
+srsd     <- 0.3 			     # sd for S/R
+units    <- 2                    # number of stock units
+nhyr     <- 18                   # number of historical years
+max.age  <- 8                    # plus group age
+survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
+CV       <- 0.15                 # variability of catch.n and index observations
+
+refpt <- array(c(100, 1), dim = c(1,2), dimnames = list(NULL, c("ssb", "harvest") ))
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
 #====================================================================
 
 #--------------------------------------------------------------------
-# True stock history, nits of them
+# True stock history
 #--------------------------------------------------------------------
-true.stock <- window(wklife.stk[[1]], start = 30, end = 50)
-true.stock <- setPlusGroup(true.stock, plusgroup = 8)
-dimnames(true.stock) <- list(year = 1980 + 0:20)
+start.yr <- 30
+pop1 <- window(wklife.stk[[1]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+pop2 <- window(wklife.stk[[1]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
+
+true.stock <- pop1
+true.stock <- FLCore::expand(true.stock, unit = c("unique", "pop1", "pop2"))[,,2:3]
+
+true.stock[,,1] <- pop1
+true.stock[,,2] <- pop2
+
 # change fbar here also ...
+range(true.stock)[c("minfbar", "maxfbar")] <- c(2,5)
+range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
+
 
 #====================================================================
 # Stock recruit model
 #====================================================================
 
-sr.model <- as.FLSR(true.stock, model = "ricker")
-sr.model <- fmle(sr.model, control = list(trace = 0))
+# assume a stock recruitment model for each population and estimate 
+# the parameters from it
+sr.model1 <- as.FLSR(true.stock[,,1], model = "ricker")
+sr.model1 <- fmle(sr.model1, control = list(trace = 0))
+
+sr.model2 <- as.FLSR(true.stock[,,2], model = "ricker")
+sr.model2 <- fmle(sr.model2, control = list(trace = 0))
 
 # Residuals - simulate residuals as lognormal with sd=srsd
 sr.residuals <- FLQuant(rnorm(npyr * nits, sd = srsd), 
 		                dimnames = list(age  = with(dims(true.stock), min:max), 
-				                        year = dims(sr.model) $ minyear:lastyr, 
+				                        year = 1983:lastyr, 
+										unit = c("pop1", "pop2"),
 										iter = 1:nits
 						                )) 
 								
 #--------------------------------------------------------------------
 # create OM object
-# Note: this object is projected at Fsq and the values for the first
+# Note: stocks are projected at Fsq and the values for the first
 #	intermediate year are used in the projections
 #--------------------------------------------------------------------
 
-# window with FLBRP expands the object including weights, etc, the 
-# brp doesn't seem to do anything except dispatching. it replaces "stf". 
-OM <- window(true.stock, FLBRP = FLBRP(true.stock, sr.model), end = lastyr)
+# fwdWindow with FLBRP expands the object including weights
+OM <- fwdWindow(true.stock, FLBRP(true.stock, sr.model1), end = lastyr)
 
-# trick to get iterations, start with M and fwd will add to other slots
-m(OM) <- propagate(m(OM), nits)
+# propagate
+OM <- propagate(OM, nits)
 
 # project to the end of projections at last year F level
-#ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val = 2) )
-OM <- fwd(OM, sr = sr.model, sr.residuals = sr.residuals)
+ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val = .15) )
+OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
+OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
+
 
 #====================================================================
 # first simulation need to find optimum Btrig and Ftar
 #====================================================================
 
-base <- mse(OM=OM, start = iniyr, 
+base <- mse(OM = OM, start = iniyr, 
 		    sr = sr.model, sr.residuals = srRsdl, 
-		    Btrig = 0.5, Ftar = 0.75)
+		    Btrig = 0.5, Ftar = 0.75,
+			seed = 12386)
 

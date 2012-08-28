@@ -19,3 +19,4 @@ Collate:
     'as-numeric-generic.r'
     'mse-a4a.r'
     'mse-summary.r'
+    'collapseUnit.r'
