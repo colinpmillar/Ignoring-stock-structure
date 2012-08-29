@@ -6,7 +6,7 @@ and stock recruit function.}
   mse(OM, iniyr, sr.model1, sr.model2,
     survey.q = rep(1e+06, dims(OM)$age),
     sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))),
-    CV = 0.15, Ftar = 0.75, Btrig = 0.75)
+    CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt)
 }
 \arguments{
   \item{OM}{an FLStock object}
@@ -31,7 +31,7 @@ and stock recruit function.}
   Colin Millar \email{colin.millar@jrc.ec.europa.eu}
 }
 \seealso{
-  \code{\link{FLStock}}, \code{\link{\fwd}},
+  \code{\link{FLStock}}, \code{\link{fwd}},
   \code{\link{hcr}}
 }
 

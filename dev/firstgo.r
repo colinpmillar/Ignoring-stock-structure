@@ -8,7 +8,7 @@ pkg <- as.package("../StockStructure")
 build(pkg)
 #check(pkg)
 install(pkg)
-rm(pkg)
+rm(list = ls())
 
 #####################################################################
 # first runs for testing
@@ -32,6 +32,7 @@ library(StockStructure)
 data(wklife.stk)
 
 library(FLa4a)
+data(wklife.brp)
 
 #====================================================================
 # Simulation settings
@@ -48,11 +49,16 @@ max.age  <- 8                    # plus group age
 survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
 CV       <- 0.15                 # variability of catch.n and index observations
 
-refpt <- array(c(100, 1), dim = c(1,2), dimnames = list(NULL, c("ssb", "harvest") ))
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
 #====================================================================
+
+
+#--------------------------------------------------------------------
+# True stock msy reference points
+#--------------------------------------------------------------------
+refpt <- wklife.brp[[1]] @ refpts["msy", c("ssb", "harvest")]
 
 #--------------------------------------------------------------------
 # True stock history
@@ -87,11 +93,11 @@ sr.model2 <- fmle(sr.model2, control = list(trace = 0))
 
 # Residuals - simulate residuals as lognormal with sd=srsd
 sr.residuals <- FLQuant(rnorm(npyr * nits, sd = srsd), 
-		                dimnames = list(age  = with(dims(true.stock), min:max), 
-				                        year = 1983:lastyr, 
-										unit = c("pop1", "pop2"),
-										iter = 1:nits
-						                )) 
+		                dimnames = list(age  = 1, 
+				                            year = 1983:lastyr, 
+										                unit = c("pop1", "pop2"),
+										                iter = 1:nits
+						                   )) 
 								
 #--------------------------------------------------------------------
 # create OM object
