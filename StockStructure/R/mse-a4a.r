@@ -17,7 +17,8 @@
 mse <- function (OM, iniyr, sr.model1, sr.model2,
                  survey.q = rep(1e6, dims(OM) $ age),
                  sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))), 
-                 CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt) {
+                 CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
+                 seed = 1234) {
   
   #--------------------------------------------------------------------
   # set year's info  
@@ -41,12 +42,12 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #--------------------------------------------------------------------
   # general settings
   #--------------------------------------------------------------------
-  #set.seed(seed)
+  set.seed(seed)
   iniPyr <- iniyr
   lastPyr <- OM @ range["maxyear"]
   nPyr <- lastPyr - iniPyr + 1
   # assessment years
-  assessment.years <- seq(iniPyr, lastPyr)
+  assessment.years <- seq(iniPyr, lastPyr - 1)
 
   #--------------------------------------------------------------
   # Get stock assessment data
@@ -68,32 +69,38 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     catch.n(assessment.stock) * rlnorm( prod(dim(m(assessment.stock))), 0, CV)
   catch(assessment.stock) <- computeCatch(assessment.stock)
  
-  
-  if (0) {  
+   
   #--------------------------------------------------------------------
   # objects to store TACs, catch, fbar and observations of these ...
   # might put them all into one
   #--------------------------------------------------------------------
-  #true.summary <- catch(OM)
+  OM.summaries <- catch(OM)
+  MP.summaries <- catch(assessment.stock)
   # hack to overcome exported method by reshape
-  #true.summary <- FLCore::expand(true.summary, age=c("all", "catch", "fbar"))
-  #dimnames(true.summary)[[1]][1] <- "TAC"	
-  #observed.summary <- true.summary
+  OM.summaries <- FLCore::expand(OM.summaries, age=c("all", "catch", "fbar", "forecast.f"))
+  MP.summaries <- FLCore::expand(MP.summaries, age=c("all", "catch", "fbar", "forecast.f"))
+  dimnames(OM.summaries)[[1]][1] <- "TAC" 
+  dimnames(MP.summaries)[[1]][1] <- "TAC"
+  
   # put in some values
-  #true.summary["fbar"] <- fbar(OM) 
-}  
+  OM.summaries["fbar"] <- fbar(OM) 
+  OM.summaries["catch"] <- catch(OM)
+  MP.summaries["catch"] <- catch(assessment.stock)
+  
   #--------------------------------------------------------------------
   # Go !!
   #--------------------------------------------------------------------
-  for (initial.year in assessment.years) {
-    cat("===================", initial.year, "===================\n")
+  for (current.year in assessment.years) {
+    cat("===================", current.year, "===================\n")
     
-    current.year <- assessment.years[1]
-    data.year    <- ac(initial.year - 1)
-    advice.year  <- ac(initial.year + 1)
+    #current.year <- assessment.years[1]
+    #current.year <- current.year + 1
+    data.year    <- ac(current.year - 1)
+    advice.year  <- ac(current.year + 1)
 
     #--------------------------------------------------------------
     # Observation of data year catch and index
+    # build up index and catch data year by year
     #--------------------------------------------------------------
   
     assessment.stock[,data.year] <- collapseUnit( OM[,data.year] )
@@ -120,33 +127,31 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
       out <- a4aFit(current.stock[,,,,,i], current.index[,,,,,i], 
                     f.model = ~ bs(age, 3) + bs(year, 8),
                     q.model = ~ bs(survey.age, 3),
-                    r.model = ~ 1,
+                    r.model = ~ factor(cohort),
                     control = list(trace = 0, do.fit = TRUE))
       attr(out, "env") <- NULL
       current.stock[,,,,,i] <- out
     }
     
     # save estimated fbar
-    #observed.summary[c("fbar"), ac(initial.year)] <- fbar(input.data[,ac(initial.year - 1)]) 
+    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,ac(current.year - 1)]) 
 
     # Harvest Control Rule (HCR)
     # what is the forecast F in advice.year
     forecast.f <- suppressWarnings( hcr(ssb(current.stock[,ac(data.year)]), refpt) )
 
+    # save forecast f
+    MP.summaries[c("forecast.f"), ac(current.year)] <- forecast.f
+    
     # get recruitments for forecasts - GM of recruitment history
     recruitments <- exp( apply(log(rec(current.stock)), 6, mean) )
     recruitments <- FLQuant(rep(c(recruitments), each = 2), 
                             dimnames = list(age  = 1, 
-                                            year = c(initial.year, advice.year),
+                                            year = c(current.year, advice.year),
                                             iter = seq(1, dims(current.stock) $ iter)
                             ))
     
-    # projections considering TAC was caught in initial.year
-    # to deal with a missing feature in fwd the last year of data must also be included
-    #ct <- unitSums(true.summary["TAC", c(data.year, initial.year)])
-    #ct[, data.year] <- catch(input.data[, data.year])
-    
-    # add space for forecast
+    # add space for forecast - try capture.output to stock screen output...
     current.stock <- fwdWindow(current.stock, FLBRP(current.stock), end = an(advice.year))
     
     # set up forecast control - TAC is taken in intermediate year, Fmsy in forecast year
@@ -157,19 +162,21 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     trgtArray[1,2,] <- 30
     trgtArray[2,2,] <- c(forecast.f)
     
-    ctrl <- fwdControl( data.frame(year = an(c(initial.year, advice.year)), quantity = c("catch", "f")), trgtArray = trgtArray)
+    ctrl <- fwdControl( data.frame(year = an(c(current.year, advice.year)), quantity = c("catch", "f")), trgtArray = trgtArray)
     
     # what selection pattern is being used?
-    current.stock <- fwd(current.stock, ctrl = ctrl, sr = list(model = "geomean", params = FLPar(a = 1)), sr.residuals = 2 * recruitments)
+    current.stock <- fwd(current.stock, ctrl = ctrl, sr = list(model = "geomean", params = FLPar(a = 1)), sr.residuals = recruitments)
 
     tac <- catch(current.stock)[,ac(advice.year)]
-    
+
     # update TAC record, all advYrs get the same TAC, may need more options
-    #true.summary["TAC",ac(initial.year + 1)] <- tac
+    MP.summaries["TAC", ac(current.year)] <- tac
       
     #--------------------------------------------------------------
     # project OM
     #--------------------------------------------------------------
+    
+    assign("tmp", OM, envir = .GlobalEnv)
 
     # first we need to find out what the F gives the TAC
     sel <- sweep(harvest(OM), 2:6, fbar(OM), "/")[,ac(data.year)]
@@ -183,8 +190,8 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
       abs(tac[,,,,,iter] - 
           sum(a * sel[,,,,,iter] / z * (1 - exp(- z)) * 
                   n[,,,,,iter] * wt[,,,,,iter]
-              )
-          )
+             )
+         )
     }
     
     OM.f <- rep(NA, 10)
@@ -209,10 +216,15 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     # check this should be pretty much zero so we have found the f that results
     # in the TAC :)
     # unitSums(catch(OM)[,advice.year]) - tac
+    OM.summaries["TAC"       , ac(current.year)] <- NA # catch(OM)[,ac(current.year)]
+    OM.summaries["catch"     , ac(current.year)] <- catch(OM)[,ac(current.year)]
+    OM.summaries["fbar"      , ac(current.year)] <- fbar(OM)[,ac(current.year)]
+    OM.summaries["forecast.f", ac(current.year)] <- NA # OM.f
     
   } # end year loop
   
-  #attr(OM, "PARs") <- PARrec
+  attr(OM, "summaries") <- list(OM = OM.summaries, MP = MP.summaries)
+  attr(OM, "assessment.data") <- list(stock = assessment.stock, index = assessment.index)
   
   return(OM)
 }

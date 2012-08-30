@@ -31,7 +31,7 @@ setMethod ("collapseUnit", "FLStock", function(object) {
   m(out) <- unitMeans(m(object))
   mat(out) <- unitMeans(mat(object))
   harvest(out) <- unitMeans(harvest(object))
-  FLCore::units( harvest(out) ) <- "f"
+  units( harvest(out) ) <- "f"
   harvest.spwn(out) <- unitMeans(harvest.spwn(object))
   m.spwn(out) <- unitMeans(m.spwn(object))
 

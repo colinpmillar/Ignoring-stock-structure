@@ -12,10 +12,10 @@
 #' @name StockStructure-package
 #' @aliases StockStructure
 #' @docType package
-#' @import Matrix
+#' @import FLCore
 #' @title Functions to investige stock structure in fish
 #' @author Colin Millar \email{colin.millar@@jrc.ec.europa.eu}
-#' @author Iago Mosquiera \email{iago.mosquiera@@jrc.ec.europa.eu}
+#' @author Iago Mosqueira \email{iago.mosqueira@@jrc.ec.europa.eu}
 #' @references none
 #' @keywords package
 #' @seealso \code{\link{paste}}

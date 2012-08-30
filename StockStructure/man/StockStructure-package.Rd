@@ -14,7 +14,7 @@
 \author{
   Colin Millar \email{colin.millar@jrc.ec.europa.eu}
 
-  Iago Mosquiera \email{iago.mosquiera@jrc.ec.europa.eu}
+  Iago Mosqueira \email{iago.mosqueira@jrc.ec.europa.eu}
 }
 \references{
   none

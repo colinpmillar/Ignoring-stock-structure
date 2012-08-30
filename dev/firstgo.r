@@ -3,6 +3,15 @@ library(devtools)
 library(testthat)
 library(roxygen2)
 
+roxygenize("../../a4a/packages/FLa4a")
+
+pkg <- as.package("../../a4a/packages/FLa4a")
+build(pkg)
+#check(pkg)
+install(pkg)
+
+
+
 roxygenize("../StockStructure")
 pkg <- as.package("../StockStructure")
 build(pkg)
@@ -40,7 +49,7 @@ data(wklife.brp)
 
 nits     <- 10                   # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 50                   # number of years to project
+npyr     <- 5                    # number of years to project
 lastyr   <- iniyr + npyr - 1     # last year in projections
 srsd     <- 0.3 			     # sd for S/R
 units    <- 2                    # number of stock units
@@ -84,7 +93,8 @@ range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
 #====================================================================
 
 # assume a stock recruitment model for each population and estimate 
-# the parameters from it
+# the parameters from it - this serves as the underlying
+# stock recruitment model
 sr.model1 <- as.FLSR(true.stock[,,1], model = "ricker")
 sr.model1 <- fmle(sr.model1, control = list(trace = 0))
 
@@ -92,9 +102,9 @@ sr.model2 <- as.FLSR(true.stock[,,2], model = "ricker")
 sr.model2 <- fmle(sr.model2, control = list(trace = 0))
 
 # Residuals - simulate residuals as lognormal with sd=srsd
-sr.residuals <- FLQuant(rnorm(npyr * nits, sd = srsd), 
-		                dimnames = list(age  = 1, 
-				                            year = 1983:lastyr, 
+sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
+		                    dimnames = list(age  = 1, 
+				                            year = dims(sr.model1)$minyear:lastyr, 
 										                unit = c("pop1", "pop2"),
 										                iter = 1:nits
 						                   )) 
@@ -103,16 +113,19 @@ sr.residuals <- FLQuant(rnorm(npyr * nits, sd = srsd),
 # create OM object
 # Note: stocks are projected at Fsq and the values for the first
 #	intermediate year are used in the projections
+# TODO need to check this for my implentation... 
 #--------------------------------------------------------------------
 
-# fwdWindow with FLBRP expands the object including weights
-OM <- fwdWindow(true.stock, FLBRP(true.stock, sr.model1), end = lastyr)
+# fwdWindow extends filling with the contents of FLBRP object
+# default in FLBRP is to use the mean of the last three years
+OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
 
 # propagate
 OM <- propagate(OM, nits)
 
 # project to the end of projections at last year F level
 ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val = .15) )
+# if no sr residuals the no noise!
 OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
 OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
 
@@ -121,8 +134,9 @@ OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
 # first simulation need to find optimum Btrig and Ftar
 #====================================================================
 
-base <- mse(OM = OM, start = iniyr, 
-		    sr = sr.model, sr.residuals = srRsdl, 
-		    Btrig = 0.5, Ftar = 0.75,
-			seed = 12386)
+base <- mse(OM = OM, iniyr = iniyr, 
+		    sr.model1 = sr.model1, sr.model2 = sr.model2,
+        sr.residuals = sr.residuals, 
+		    Btrig = 0.5, Ftar = 0.75, refpt = refpt,
+			  seed = 12345)
 
