@@ -114,13 +114,19 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     # run assessments
     for (i in 1:dims(current.stock) $ iter) {
       cat("      Iteration", i, "of", dims(current.stock) $ iter, "\n")
-      out <- a4aFit(current.stock[,,,,,i], current.index[,,,,,i], 
+      out <- 
+         try(a4aFit(current.stock[,,,,,i], current.index[,,,,,i], 
                     f.model = ~ bs(age, 3) + bs(year, 8),
                     q.model = ~ bs(survey.age, 3),
                     r.model = ~ factor(cohort),
                     control = list(trace = 0, do.fit = TRUE))
-      attr(out, "env") <- NULL
-      current.stock[,,,,,i] <- out
+            )
+      if (class(out) != "try-error") {
+        attr(out, "env") <- NULL
+        current.stock[,,,,,i] <- out
+      } else {
+        # drop the iteration!?
+      }
     }
     
     # save estimated F and N
