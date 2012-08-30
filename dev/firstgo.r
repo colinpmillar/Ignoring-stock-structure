@@ -3,13 +3,14 @@ library(devtools)
 library(testthat)
 library(roxygen2)
 
+if (0) {
 roxygenize("../../a4a/packages/FLa4a")
 
 pkg <- as.package("../../a4a/packages/FLa4a")
 build(pkg)
 #check(pkg)
 install(pkg)
-
+}
 
 
 roxygenize("../StockStructure")
@@ -49,15 +50,16 @@ data(wklife.brp)
 
 nits     <- 10                   # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 5                    # number of years to project
-lastyr   <- iniyr + npyr - 1     # last year in projections
-srsd     <- 0.3 			     # sd for S/R
+npyr     <- 10                    # number of years to project
+lastyr   <- iniyr + npyr         # last year in projections - note need one 
+                                 # extra year of data for predictions
+srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
 nhyr     <- 18                   # number of historical years
 max.age  <- 8                    # plus group age
 survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
 CV       <- 0.15                 # variability of catch.n and index observations
-
+stock.id <- 7                    # which wklife stock to use
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
@@ -67,14 +69,14 @@ CV       <- 0.15                 # variability of catch.n and index observations
 #--------------------------------------------------------------------
 # True stock msy reference points
 #--------------------------------------------------------------------
-refpt <- wklife.brp[[1]] @ refpts["msy", c("ssb", "harvest")]
+refpt <- wklife.brp[[stock.id]] @ refpts["msy", c("ssb", "harvest")]
 
 #--------------------------------------------------------------------
 # True stock history
 #--------------------------------------------------------------------
 start.yr <- 30
-pop1 <- window(wklife.stk[[1]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-pop2 <- window(wklife.stk[[1]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+pop1 <- window(wklife.stk[[stock.id]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+pop2 <- window(wklife.stk[[stock.id]], start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
 dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
 
 true.stock <- pop1
@@ -131,12 +133,34 @@ OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
 
 
 #====================================================================
-# first simulation need to find optimum Btrig and Ftar
+# first simulation
 #====================================================================
 
 base <- mse(OM = OM, iniyr = iniyr, 
-		    sr.model1 = sr.model1, sr.model2 = sr.model2,
-        sr.residuals = sr.residuals, 
-		    Btrig = 0.5, Ftar = 0.75, refpt = refpt,
-			  seed = 12345)
+		        sr.model1 = sr.model1, sr.model2 = sr.model2,
+            sr.residuals = sr.residuals, 
+		        Btrig = 0.5, Ftar = 0.75, refpt = refpt,
+			      seed = 12345)
 
+    
+myrec <- function (object) stock.n(object)[1,]
+        
+plotComp(base[,,1], 
+         fn = list(SSB = ssb, Recruits = myrec, Yield = catch, F = fbar), 
+         probs = c(0.75, 0.5, 0.25), 
+         size= c(0.5, 1, 0.5), 
+         lty = c(2,1,2), 
+         facet = facet_wrap(~qname, scale = "free"))
+
+
+dev.new()
+assessment <- attr(base, "assessment.data") $ stock
+plotComp(assessment, 
+    fn = list(SSB = ssb, Recruits = myrec, Yield = catch, F = fbar), 
+    probs = c(0.75, 0.5, 0.25), 
+    size= c(0.5, 1, 0.5), 
+    lty = c(2,1,2), 
+    facet = facet_wrap(~qname, scale = "free"))
+
+
+#attr(base, "summaries")

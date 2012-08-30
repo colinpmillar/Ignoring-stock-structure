@@ -22,32 +22,22 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   
   #--------------------------------------------------------------------
   # set year's info  
-  #	lastPyr - operating model maxyear
-  #	iniPyr - start - first year for projections (user set)
-  #	nPyr - number of year to project (computed)
-  #	aYr - assessment year (computed)
-  #	iYr - i year in the loop, it coincides with the intermediate year
+  #	current.year - i year in the loop, it coincides with the intermediate year
   #			in the usual ICES settings (loop) 
-  #	dtYr - last year with data which is the last year for which there 
+  #	data.year - last year with data which is the last year for which there 
   #			are estimates (loop)
-  #	advYr - advice year, the year for which advice is being given (loop)     
+  #	advice.year - advice year, the year for which advice is being given (loop)     
   #--------------------------------------------------------------------
-  
-  Ftar <- 0.75
-  Btrig <- 0.75
-  Fmin <- 0.3
-  Blim <- 0.3
   
   
   #--------------------------------------------------------------------
   # general settings
   #--------------------------------------------------------------------
   set.seed(seed)
-  iniPyr <- iniyr
-  lastPyr <- OM @ range["maxyear"]
-  nPyr <- lastPyr - iniPyr + 1
-  # assessment years
-  assessment.years <- seq(iniPyr, lastPyr - 1)
+  # final year of OM for prediction only
+  data.years       <- with(dims(OM), seq(minyear, maxyear - 1))
+  assessment.years <- seq(iniyr, dims(OM) $ maxyear - 1)
+  estimate.years <- with(dims(OM), seq(minyear, maxyear - 2))
 
   #--------------------------------------------------------------
   # Get stock assessment data
@@ -55,9 +45,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   
   # weights at age are weighted means from each population - 
   # presumably estimated each year from a survey
-  assessment.stock  <- collapseUnit(OM)
+  assessment.stock  <- collapseUnit(OM)[,ac(data.years)]
   # index = q * N1 + q * N2 = q * (N1 + N2)
-  assessment.index  <- FLIndex(index = unitSums( stock.n(OM) ) * survey.q)
+  assessment.index  <- FLIndex(index = unitSums( stock.n(OM)[,ac(data.years)] ) * survey.q)
   
   #--------------------------------------------------------------------
   # introduce OEM on historical data (adding to all years but
@@ -68,14 +58,13 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   catch.n(assessment.stock) <- 
     catch.n(assessment.stock) * rlnorm( prod(dim(m(assessment.stock))), 0, CV)
   catch(assessment.stock) <- computeCatch(assessment.stock)
- 
-   
+  
   #--------------------------------------------------------------------
   # objects to store TACs, catch, fbar and observations of these ...
   # might put them all into one
   #--------------------------------------------------------------------
-  OM.summaries <- catch(OM)
-  MP.summaries <- catch(assessment.stock)
+  OM.summaries <- catch(OM)[,ac(data.years)]
+  MP.summaries <- catch(assessment.stock)[,ac(data.years)]
   # hack to overcome exported method by reshape
   OM.summaries <- FLCore::expand(OM.summaries, age=c("all", "catch", "fbar", "forecast.f"))
   MP.summaries <- FLCore::expand(MP.summaries, age=c("all", "catch", "fbar", "forecast.f"))
@@ -83,15 +72,16 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   dimnames(MP.summaries)[[1]][1] <- "TAC"
   
   # put in some values
-  OM.summaries["fbar"] <- fbar(OM) 
-  OM.summaries["catch"] <- catch(OM)
+  OM.summaries["fbar"] <- fbar(OM)[,ac(data.years)] 
+  OM.summaries["catch"] <- catch(OM)[,ac(data.years)]
   MP.summaries["catch"] <- catch(assessment.stock)
+  
   
   #--------------------------------------------------------------------
   # Go !!
   #--------------------------------------------------------------------
   for (current.year in assessment.years) {
-    cat("===================", current.year, "===================\n")
+    cat("===============", current.year, "of", max(assessment.years), "===============\n")
     
     #current.year <- assessment.years[1]
     #current.year <- current.year + 1
@@ -107,7 +97,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     catch.n(assessment.stock)[,data.year] <- 
         catch.n(assessment.stock)[,data.year] * 
         rlnorm(prod(dim(m(assessment.stock))[-2]), 0, CV)
-  
+    
     index(assessment.index)[,data.year] <- 
         unitSums( stock.n(OM)[,data.year] ) * 
         survey.q * 
@@ -132,6 +122,10 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
       attr(out, "env") <- NULL
       current.stock[,,,,,i] <- out
     }
+    
+    # save estimated F and N
+    stock.n(assessment.stock[,data.year]) <- stock.n(current.stock[,data.year])
+    harvest(assessment.stock[,data.year]) <- harvest(current.stock[,data.year])
     
     # save estimated fbar
     MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,ac(current.year - 1)]) 
@@ -216,17 +210,22 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     # check this should be pretty much zero so we have found the f that results
     # in the TAC :)
     # unitSums(catch(OM)[,advice.year]) - tac
-    OM.summaries["TAC"       , ac(current.year)] <- NA # catch(OM)[,ac(current.year)]
-    OM.summaries["catch"     , ac(current.year)] <- catch(OM)[,ac(current.year)]
-    OM.summaries["fbar"      , ac(current.year)] <- fbar(OM)[,ac(current.year)]
+    OM.summaries["TAC"       , ac(current.year)] <- catch(OM)[,ac(advice.year)]
+    OM.summaries["catch"     , ac(current.year)] <- NA # catch(OM)[,ac(current.year)]
+    OM.summaries["fbar"      , ac(current.year)] <- fbar(OM)[,ac(advice.year)]
     OM.summaries["forecast.f", ac(current.year)] <- NA # OM.f
     
   } # end year loop
   
-  attr(OM, "summaries") <- list(OM = OM.summaries, MP = MP.summaries)
-  attr(OM, "assessment.data") <- list(stock = assessment.stock, index = assessment.index)
+  harvest(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
+  stock.n(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
   
-  return(OM)
+  catch(assessment.stock) <- computeCatch(assessment.stock)
+  attr(OM, "summaries") <- list(OM = OM.summaries, MP = MP.summaries)
+  attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
+                                      index = index(assessment.index)[,ac(estimate.years)])
+  
+  return(OM[,ac(data.years)])
 }
 
 
