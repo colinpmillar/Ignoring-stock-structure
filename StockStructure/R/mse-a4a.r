@@ -18,7 +18,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                  survey.q = rep(1e6, dims(OM) $ age),
                  sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))), 
                  CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
-                 seed = 1234) {
+                 seed = 12345) {
   
   #--------------------------------------------------------------------
   # set year's info  
@@ -33,7 +33,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #--------------------------------------------------------------------
   # general settings
   #--------------------------------------------------------------------
-  set.seed(seed)
+  if (!is.null(seed)) set.seed(seed)
   # final year of OM for prediction only
   data.years       <- with(dims(OM), seq(minyear, maxyear - 1))
   assessment.years <- seq(iniyr, dims(OM) $ maxyear - 1)
