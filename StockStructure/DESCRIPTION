@@ -11,7 +11,8 @@ Depends:
     FLCore,
     FLAssess,
     FLAdvice,
-    FLash
+    FLash,
+    MASS
 Collate:
     'StockStructure-package.r'
     'tools.r'
