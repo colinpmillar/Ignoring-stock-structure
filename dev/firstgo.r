@@ -59,8 +59,10 @@ ices <- read.csv("../data/icesdata.csv", stringsAsFactors = FALSE)
 stocks <- c("nop-34", "cod-347d", "had-34", "ple-eche", "ple-nsea", "sol-eche", "sol-nsea", "whg-47d")
 ices <- subset(ices, FishStock %in% stocks)[,c("FishStock", "Year", "Recruitment", "SSB","MeanF")]
 ices $ species <- substring(ices $ FishStock, 1, 3)
-ices $ SSB <- ices $ SSB
-ices $ Recruitment <- ices $ Recruitment
+ices $ SSB <- ices $ SSB / 1000
+ices $ Recruitment <- ices $ Recruitment / 1000
+
+ices $ spr0 <- spr0()
 
 srr <- 
     sapply(
@@ -73,14 +75,12 @@ srr <-
           ab. <- mvrnorm(2000, pars, Var) # intercept, slope = 1/a, b/a
           ab. <- ab.[ab.[,1] > 0 & ab.[,2] > 0,]
           ab <- cbind(a = 1/ab.[,1], b = ab.[,1] / ab.[,2])
-          colMeans(ab)
+          c(colMeans(ab), spr0(FLQuant(x $ SSB), FLQuant(x $ Recruitment), FLQuant(x $ MeanF)))
         })
 
-srr <- data.frame(FishStock = colnames(srr), a = srr[1,], b = srr[2,])
+srr <- data.frame(FishStock = colnames(srr), bha = srr[1,], bhb = srr[2,], spr0 = srr[3,])
 rownames(srr) <- NULL
 srr $ species <- substring(srr $ FishStock, 1, 3)
-
-names(srr)[2:3] <- c("bha", "bhb")
 
 # get LH params for these stocks ... 
 # need - cod, had, plaice, sol, whg
@@ -91,6 +91,9 @@ LHlist <- merge(srr, LH, all = TRUE)
 LHlist $ t0 [is.na(LHlist $ t0)] <- -0.1
 
 LHlist <- subset(LHlist, !is.na(bha))
+
+LHlist[c("s", "v", "spr0")] <- svPars("bevholt", spr0 = LHlist $ spr0, a = LHlist $ bha, b = LHlist $ bhb)
+
 
 #==============================================================================
 # gislasim - cleaned version
@@ -145,9 +148,9 @@ ASC.brp <-
       cat(nam, "\n")
 
       # get parameters
-      pars <- c("linf", "k", "t0", "a", "b", "t0")
+      pars <- c("linf", "k", "t0", "a", "b","s","v")
       par <- FLPar(unlist(x[,pars]), pars)
-      
+      print(par)
       # complete with gislasim
       par <- gislasim( par[ pars %in% dimnames( gislasim(0) ) $ params] )
 
@@ -180,7 +183,9 @@ ASC.stk <-
       }
     })
 
+ASC.stk <- FLStocks(ASC.stk)
 
+plot(ASC.stk[[8]])
 
 #====================================================================
 # Simulation settings
