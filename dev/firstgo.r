@@ -39,58 +39,58 @@ rm(list = ls())
 #####################################################################
 options(width = 150)
 library(StockStructure)
-data(wklife.stk)
-
 library(FLa4a)
-data(wklife.brp)
+
 
 #====================================================================
 # Choose which stocks to play with
 #====================================================================
 
-# full list:
-sim.stks <- list(anglerfish = c("ang-78ab",      "ang-ivvi"),
-                 cod1        = c("cod-farb", "cod-rock"),
-                 cod2        = c("cod-iceg", "cod-wgr-in"), # "cod-coas", "cod-ewgr", 
-                 #herring    = c("her-31", "her-nirs"), # wrong scales
-                 ling       = c("lin-comb in Subareas I&II", "lin-comb other areas"),
-                 #plaice     = c("ple-2232", "ple-eche", "ple-iris","ple-7b-c", "ple-7h-k"), different scale 
-                 plaice     = c("ple-celt", "ple-kask"),
-                 mentella   = c("smn-gr", "smn-sp"), # "smn-arct", "smn-con", "smn-dp", 
-                 sole       = c("sol-7h-k", "sol-8c9a"), # "sol-7b-c", 
-                 whiting    = c( "whg-iris", "whg-scow")) #  "whg-89a","whg-kask","whg-7e-k",
-
-if (0) {
-  
-tmp <- function(what, fun, n = 40) {
-  sapply(sim.stks[[what]], 
-         function(x) {
-           x <- c(fun(wklife.brp[[x]]))
-           c(x, rep(NA, n - length(x)))
-         })
-}
-
-plotit <- function(x) {
-  df1 <- data.frame(y     = c(x), 
-                    x     = rep(1:nrow(x), ncol(x)), 
-                    group = factor(rep(colnames(x), each = nrow(x))))
-           
-  ggplot(df1) + geom_line(aes(x = x, y = y, group = group, col = group))
-}
-
-plotit(tmp("cod", m))
-
-data(wklifeLst)
-
-head(wklifeLst)
-}
-
 # look through ICES reports for the values of a few stocks and rerun the simulations
 # use
 # cod like
 # plaice like
-# herring like
 
+#==============================================================================
+# get ICES recruitment data
+#==============================================================================
+
+ices <- read.csv("../data/icesdata.csv", stringsAsFactors = FALSE)
+stocks <- c("nop-34", "cod-347d", "had-34", "ple-eche", "ple-nsea", "sol-eche", "sol-nsea", "whg-47d")
+ices <- subset(ices, FishStock %in% stocks)[,c("FishStock", "Year", "Recruitment", "SSB","MeanF")]
+ices $ species <- substring(ices $ FishStock, 1, 3)
+ices $ SSB <- ices $ SSB
+ices $ Recruitment <- ices $ Recruitment
+
+srr <- 
+    sapply(
+        split(ices, ices $ FishStock),
+        function(x) {
+          x <- x[order(x $ SSB),]
+          fit <- glm(Recruitment ~ I(1/SSB), family = Gamma(inverse), data = x)
+          Var <- summary(fit) $ cov.unscaled
+          pars <- coef(fit)
+          ab. <- mvrnorm(2000, pars, Var) # intercept, slope = 1/a, b/a
+          ab. <- ab.[ab.[,1] > 0 & ab.[,2] > 0,]
+          ab <- cbind(a = 1/ab.[,1], b = ab.[,1] / ab.[,2])
+          colMeans(ab)
+        })
+
+srr <- data.frame(FishStock = colnames(srr), a = srr[1,], b = srr[2,])
+rownames(srr) <- NULL
+srr $ species <- substring(srr $ FishStock, 1, 3)
+
+names(srr)[2:3] <- c("bha", "bhb")
+
+# get LH params for these stocks ... 
+# need - cod, had, plaice, sol, whg
+LH <- read.csv("../data/lh.csv", stringsAsFactors = FALSE)
+
+LHlist <- merge(srr, LH, all = TRUE)
+
+LHlist $ t0 [is.na(LHlist $ t0)] <- -0.1
+
+LHlist <- subset(LHlist, !is.na(bha))
 
 #==============================================================================
 # gislasim - cleaned version
@@ -137,32 +137,28 @@ setMethod("gislasim", signature(linf="FLPar"), function (linf){
 # get LH pars 
 #------------------------------------------------------------------------------
 
-data(wklifeLst)
-
-ASC.lst <- 
-  list(ang1 = list(linf = 10, ) 
-
 ASC.brp <- 
-  lapply(
-    split(wklifeLst, wklifeLst $ stock)[1:10], 
-    function(x) {
-      cat(as.character(x$stock)[1], "\n")
+  lapply(1:nrow(LHlist), 
+    function(i) {
+      x <- LHlist[i,]
+      nam <- with(x, paste(FishStock, set, sep = "."))
+      cat(nam, "\n")
 
       # get parameters
-      par <- FLPar(x $ value, x $ param)
+      pars <- c("linf", "k", "t0", "a", "b", "t0")
+      par <- FLPar(unlist(x[,pars]), pars)
       
       # complete with gislasim
-      par <- gislasim( par[ x $ param %in% dimnames( gislasim(0) ) $ params] )
+      par <- gislasim( par[ pars %in% dimnames( gislasim(0) ) $ params] )
 
       # run LH
       res <- lh(par)    
-      res @ desc <- as.character(x $ stock[1])
+      res @ desc <- nam
       res
     })
 
-ASC.brp <- ASC.brp[ !sapply(ASC.brp, is.null) ]
 
- <- wklife.brp[1:10]
+
 
 #------------------------------------------------------------------------------
 # simulate F trajectory
