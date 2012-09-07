@@ -90,7 +90,7 @@ setMethod("gislasim", signature(linf="FLPar"), function (linf){
 # plaice like
 
 #==============================================================================
-# get ICES recruitment data
+# get NS demersal data for conditioning
 #==============================================================================
 
 ices <- read.csv("../data/icesdata.csv", stringsAsFactors = FALSE)
@@ -107,7 +107,7 @@ srr <-
           x <- subset(x, Year > 1990)
 		  a <- exp(mean(log(x $ SSB), na.rm = TRUE))
 		  x $ a <- a
-          b <- coef(glm(Recruitment ~ I(1/ (SSB * a)) + offset(1/a) - 1, Gamma, x)  )
+          b <- coef(glm(Recruitment ~ I(1/(SSB * a)) + offset(1/a) - 1, Gamma, x)  )
 		  slope <- unname(a/b)
           c(a = a, b = b, spr0(FLQuant(x $ SSB), FLQuant(x $ Recruitment), FLQuant(x $ MeanF)))
         })
@@ -138,27 +138,71 @@ LHlist
 # get LH pars 
 #------------------------------------------------------------------------------
 
+B90 <- 15000
+
+sim.design <- mapply(function(v, linf) list(v = v, linf = linf), 
+                     v    = rep(c(1.2, 0.8) * B90, each = 3), 
+                     linf = rep(c(60 , 80, 100), 2), 
+                     SIMPLIFY = FALSE)
+                 
 ASC.brp <- 
-  lapply(1:nrow(LHlist), 
-    function(i) {
-      x <- LHlist[i,]
-      nam <- with(x, paste(FishStock, set, sep = "."))
+  lapply(sim.design, 
+    function(x) {
+      nam <- paste0("linf:", x $ linf, "-v:", x $ v) 
       cat(nam, "\n")
 
-      # get parameters
-      pars <- c("linf", "k", "t0", "a", "b","s","v")
-      par <- FLPar(unlist(x[,pars]), pars)
-      print(par)
       # complete with gislasim
-      par <- gislasim( par[ pars %in% dimnames( gislasim(0) ) $ params] )
-
-      # run LH
-      res <- lh(par)    
+      par <- gislasim(linf = x $ linf, v = 5000, 
+                      s = 1, # slope at 20% of virgin biomass - if asymtotic R is 
+                      #a50 = 2, ato95 = 1, # a50 and age to a95 for maturity ogive
+                      sl = 2, sr = 5000, a1 = 4, # left and right slope and fully selected age for fishery selectivity
+                      a = 5e-6, b = 2.9, # weight length relationship - similar to demersal types
+                      t0 = -1) # t0 in vonB growth model - could be better... 
+                      # all other params - k, M1, M2 from gislason et al. 
+                      # bg set to b, bg is b in WLR for stock weight
+      
+      # run LH          
+      res <- lh(par, sr = "bevholt", # choose beverton holt SRR 
+                range = c(min = 1, max = 40, # full age range in simulations
+                          minfbar = 4, maxfbar = 8, # fbar over fully expoited ages 
+                          plusgroup = 40), # plus group at 30cm
+                fish = 0.5, # fishing occurs half way through the year.  
+                fbar = seq(0, 1, length = 101)) 
+            
+      # adjust recruitment params for fixed assymptote and biomass at 90% of assymptote
+      params(res) <- FLPar(a = 300000, b = x $ v / .9)
+      res <- brp(res)
+      
       res @ desc <- nam
       res
     })
 
+# stock summary comparisons
+funs <- c("catch.sel", "mat", "m", "stock.wt")
+sum <- do.call(rbind,
+         lapply(ASC.brp, 
+           function(brp) 
+             do.call(rbind,
+                 lapply(funs, function(x) cbind(as.data.frame(do.call(x, list(brp)))[c("age","data")], fun = x, desc = brp @ desc))
+             )))
+  
+# stock recruit comparisons
+sr.sum <- do.call(rbind,
+            lapply(ASC.brp, function(brp) { 
+              ssb <- seq(1, virginB, length = 100)
+              rec <- eval(model(brp)[[3]], 
+                          c(as.list(params(brp) @ .Data[,1]), list(ssb = ssb)))
+              data.frame(desc = brp @ desc, data = rec, age = ssb, fun = "srr")
+            }))
 
+
+xyplot(I(data * exp(rnorm(1, 0, .5))) ~ age | fun, groups = desc, data = rbind(sum, sr.sum), type = "l", scales = list(relation = "free"))
+
+
+# ref points
+refpt <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),c("harvest")] @ .Data))
+colnames(refpt) <- sapply(ASC.brp, function(x) x @ desc)
+refpt
 
 #------------------------------------------------------------------------------
 # simulate F trajectory
@@ -167,26 +211,20 @@ ASC.brp <-
 ASC.stk <- 
   lapply(ASC.brp, 
     function(x) {
-      cat(x@desc, "\n")
-      Fc <- c( refpts(x)["crash", "harvest"] * 0.7)
-      if (!is.na(Fc)) {	
-        Fmsy <- c(refpts(x)["msy", "harvest"])
-        Ftrg <- c(seq(0, Fc, len = 19), rep(Fc, 20), seq(Fc, Fmsy, len = 10))
-        trg <- fwdControl(data.frame(year = 2:50, quantity = rep('f', 49), val = Ftrg))
-        ex.stk <- as(x, "FLStock")[,1:50]
-        fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))
-      } else {
-        print("NULL")
-		NULL
-      }
+      cat(x @ desc, "\n")
+      Fc <- c( refpts(x)["crash", "harvest"] * 0.9)
+      Fmsy <- c(refpts(x)["msy", "harvest"])
+      nFc <- 60
+      Ftrg <- c(exp( seq(log(Fmsy), log(Fc), len = nFc)), seq(Fc, Fmsy, len = 5), rep(Fmsy, 95 - nFc))
+      trg <- fwdControl(data.frame(year = 2:101, quantity = rep('f', 100), val = Ftrg))
+      ex.stk <- as(x, "FLStock")
+      out <- fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))[,-1]
+      plot(out)
+      out
     })
 
 
-ASC.stk <- FLStocks(ASC.stk[ !sapply(ASC.stk, is.null) ])
-plot(ASC.stk)
-
-
-plot(ASC.stk[[8]])
+ASC.stk <- FLStocks(ASC.stk)
 
 #====================================================================
 # Simulation settings
@@ -200,10 +238,10 @@ lastyr   <- iniyr + npyr         # last year in projections - note need one
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
 nhyr     <- 15                   # number of historical years
-max.age  <- 8                    # plus group age
+max.age  <- 10                    # plus group age
 survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
 CV       <- 0.15                 # variability of catch.n and index observations
-stock.id <- "anglerfish"                    # which wklife stock to use
+stock.ids <- c(1,2)                    # which stocks to use
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
@@ -213,17 +251,17 @@ stock.id <- "anglerfish"                    # which wklife stock to use
 #--------------------------------------------------------------------
 # True stock msy reference points
 #--------------------------------------------------------------------
-refpt1 <- ASC.stk[[stock.id]] $ brp[[1]] @ refpts["msy", c("ssb", "harvest")]
-refpt2 <- ASC.stk[[stock.id]] $ brp[[2]] @ refpts["msy", c("ssb", "harvest")]
+refpt1 <- refpts( ASC.brp[[stock.ids[1]]] )["msy", c("ssb", "harvest")]
+refpt2 <- refpts( ASC.brp[[stock.ids[2]]] )["msy", c("ssb", "harvest")]
 
 
 #--------------------------------------------------------------------
 # True stock history
 #--------------------------------------------------------------------
 start.yr <- 10
-pop1 <- window(ASC.stk[[stock.id]] $ stk[[1]], 
+pop1 <- window(ASC.stk[[stock.ids[1]]], 
                start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-pop2 <- window(ASC.stk[[stock.id]] $ stk[[1]], 
+pop2 <- window(ASC.stk[[stock.ids[2]]], 
                start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
 dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
 
@@ -234,7 +272,7 @@ true.stock[,,1] <- pop1
 true.stock[,,2] <- pop2
 
 # change fbar here also ...
-range(true.stock)[c("minfbar", "maxfbar")] <- c(2,5)
+range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
 range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
 
 
@@ -245,11 +283,10 @@ range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
 # assume a stock recruitment model for each population and estimate 
 # the parameters from it - this serves as the underlying
 # stock recruitment model
-sr.model1 <- list(model = "bevholt", params = params(ASC.stk[[stock.id]] $ brp[[1]]))
-sr.model2 <- list(model = "bevholt", params = params(ASC.stk[[stock.id]] $ brp[[2]]))
+sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.ids[1]]]))
+sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.ids[2]]]))
 
 # stock recruit residuals - simulate residuals as lognormal with sd=srsd
-set.seed(12321)
 sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
 		                    dimnames = list(age  = 1, 
 				                            year = dims(true.stock)$minyear:lastyr, 
