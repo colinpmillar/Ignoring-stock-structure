@@ -41,6 +41,7 @@ plotOM <- function(OM, probs = c(0.025, .5, .975)) {
 #' helloWorld(3435)
 plotAssessment <- function(OM) {
   assessment <- attr(OM, "assessment.data") $ stock
+  myrec <- function (object) stock.n(object)[1,]               
   plotComp(assessment, 
       fn = list(SSB = ssb, Recruits = myrec, Yield = catch, F = fbar), 
       probs = c(0.75, 0.5, 0.25), 

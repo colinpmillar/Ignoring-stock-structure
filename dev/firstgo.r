@@ -20,7 +20,7 @@ mybuild <- function() {
 
 mybuild()
 
-rm(list = ls())
+rm(list = ls(all = TRUE))
 
 #####################################################################
 # first runs for testing
@@ -60,6 +60,7 @@ library(FLa4a)
 ices <- read.csv("../data/icesdata.csv", stringsAsFactors = FALSE)
 stocks <- c("nop-34", "cod-347d", "had-34", "ple-eche", "ple-nsea", "sol-eche", "sol-nsea", "whg-47d")
 ices <- subset(ices, FishStock %in% stocks)[,c("FishStock", "Year", "Recruitment", "SSB","MeanF")]
+rm(stocks)
 ices $ species <- substring(ices $ FishStock, 1, 3)
 ices $ SSB <- ices $ SSB * 1000 # kg
 ices $ Recruitment <- ices $ Recruitment # 1000s
@@ -85,15 +86,14 @@ srr $ species <- substring(srr $ FishStock, 1, 3)
 LH <- read.csv("../data/lh.csv", stringsAsFactors = FALSE)
 LH $ a <- LH $ a / 1000  # convert output to kg
 
-LHlist <- merge(srr, LH, all = TRUE)
+LH <- merge(srr, LH, all = TRUE)
+rm(srr)
 
-LHlist $ t0 [is.na(LHlist $ t0)] <- -0.1
+LH <- subset(LHlist, !is.na(bha))
 
-LHlist <- subset(LHlist, !is.na(bha))
+LH[c("s", "v", "spr0")] <- svPars("bevholt", spr0 = LH $ spr0, a = LH $ bha, b = LH $ bhb)
 
-LHlist[c("s", "v", "spr0")] <- svPars("bevholt", spr0 = LHlist $ spr0, a = LHlist $ bha, b = LHlist $ bhb)
-
-LHlist
+LH
 
 #==============================================================================
 # simulate
@@ -140,6 +140,7 @@ ASC.brp <-
       res
     })
 
+rm(sim.design)
 
 # refpts
 refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),"harvest"] @ .Data))
@@ -158,6 +159,7 @@ sum <- do.call(rbind, lapply(ASC.brp, function(brp)
              cbind(as.data.frame(do.call(f, list(brp)))[c("age","data")],
                    type = f, desc = brp @ desc)
        ))))
+rm(funs)
 
 xyplot(data ~ age | type, data = sum, groups = desc, type = "l",
        scales = list(relation = "free"))
@@ -178,7 +180,6 @@ ASC.stk <-
       Ftrg <- c(exp( seq(log(Fmsy), log(Fc), len = nFc) ), 
                 seq(Fc, Fmsy, len = 5), 
                 rep(Fmsy, 95 - nFc))
-      Ftrg[] <- Fmsy
       trg <- fwdControl(data.frame(year = 2:101, quantity = rep('f', 100), val = Ftrg))
       ex.stk <- as(x, "FLStock")
       out <- fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))[,-(1)]
@@ -188,15 +189,106 @@ ASC.stk <-
 
 ASC.stk <- FLStocks(ASC.stk)
 
-sapply(ASC.stk, function(x) tail(c(colSums(stock.n(x))), 1))
+
+
+
+do.one <- function(stock.id) {
+  
+#--------------------------------------------------------------------
+# True stock msy reference points
+#--------------------------------------------------------------------
+  refpt1 <- ASC.brp[[stock.id[1]]] @ refpts["msy", c("ssb", "harvest")]
+  refpt2 <- ASC.brp[[stock.id[2]]] @ refpts["msy", c("ssb", "harvest")]
+  
+  
+#--------------------------------------------------------------------
+# True stock history
+#--------------------------------------------------------------------
+  pop1 <- window(ASC.stk[[stock.id[1]]], 
+      start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+  pop2 <- window(ASC.stk[[stock.id[1]]], 
+      start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
+  dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
+  
+  true.stock <- pop1
+  true.stock <- FLCore::expand(true.stock, unit = c("unique", "pop1", "pop2"))[,,2:3]
+  
+  true.stock[,,1] <- pop1
+  true.stock[,,2] <- pop2
+  rm(pop1, pop2)
+  
+# change fbar here also ...
+  range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
+  range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
+  
+  
+#====================================================================
+# Stock recruit model
+#====================================================================
+  
+# assume a stock recruitment model for each population and estimate 
+# the parameters from it - this serves as the underlying
+# stock recruitment model
+  sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[1]]]))
+  sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[2]]]))
+  
+# stock recruit residuals - simulate residuals as lognormal with sd=srsd
+  sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
+      dimnames = list(age  = 1, 
+          year = dims(true.stock)$minyear:lastyr, 
+          unit = c("pop1", "pop2"),
+          iter = 1:nits
+      )) 
+  
+#--------------------------------------------------------------------
+# create OM object
+# Note: stocks are projected at Fsq and the values for the first
+#	intermediate year are used in the projections
+# TODO need to check this for my implentation... 
+#--------------------------------------------------------------------
+  
+# fwdWindow extends filling with the contents of FLBRP object
+# default in FLBRP is to use the mean of the last three years
+# this line fails validFLBRP check on unadultarated FLCore
+  OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
+  
+# propagate
+  OM <- propagate(OM, nits)
+  
+# project to the end of projections at last year F level
+  Fsq <- c(fbar(OM[, ac(iniyr)]))[1]
+  ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val =  Fsq))
+# if no sr residuals then no noise!
+  OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
+  OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
+  rm(ctrl)
+  
+#====================================================================
+# first simulation
+#====================================================================
+  
+  
+  refpt <- refpt1
+  refpt[] <- c(50000, 0.3) # estimates of SSB and F msy
+  
+  base <- mse(OM = OM, iniyr = iniyr, 
+      sr.model1 = sr.model1, sr.model2 = sr.model2,
+      sr.residuals = sr.residuals, 
+      Btrig = 0.5, Ftar = 0.75, refpt = refpt,
+      seed = NULL, start = "sepVPA")
+  
+  base        
+}        
+
 
 #====================================================================
 # Simulation settings
 #====================================================================
 
-nits     <- 10                   # number of iterations
+start.yr <- 40                   # where on the stock sims to start
+nits     <- 50                   # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 10                    # number of years to project
+npyr     <- 30                    # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections - note need one 
                                  # extra year of data for predictions
 srsd     <- 0.3 			           # sd for S/R
@@ -205,104 +297,27 @@ nhyr     <- 15                   # number of historical years
 max.age  <- 10                    # plus group age
 survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
 CV       <- 0.15                 # variability of catch.n and index observations
-stock.id <- c(1,2)                    # which wklife stock to use
+
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
 #====================================================================
 
+choices <- cbind( rep(1:5, 5:1), unlist(lapply(2:6, function(i) i:6)))
 
-#--------------------------------------------------------------------
-# True stock msy reference points
-#--------------------------------------------------------------------
-refpt1 <- ASC.brp[[stock.id[1]]] @ refpts["msy", c("ssb", "harvest")]
-refpt2 <- ASC.brp[[stock.id[2]]] @ refpts["msy", c("ssb", "harvest")]
+#mybuild()
 
+for (i in 1:nrow(choices)) {
+  cat("i\n")
+  out <- do.one(choices[i,])
 
-#--------------------------------------------------------------------
-# True stock history
-#--------------------------------------------------------------------
-start.yr <- 10
-pop1 <- window(ASC.stk[[stock.id[1]]], 
-               start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-pop2 <- window(ASC.stk[[stock.id[1]]], 
-               start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
+  dev.new()
+  plotOM(out)
+  dev.new()
+  plotAssessment(out)
 
-true.stock <- pop1
-true.stock <- FLCore::expand(true.stock, unit = c("unique", "pop1", "pop2"))[,,2:3]
-
-true.stock[,,1] <- pop1
-true.stock[,,2] <- pop2
-
-# change fbar here also ...
-range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
-range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
-
-
-#====================================================================
-# Stock recruit model
-#====================================================================
-
-# assume a stock recruitment model for each population and estimate 
-# the parameters from it - this serves as the underlying
-# stock recruitment model
-sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[1]]]))
-sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[2]]]))
-
-# stock recruit residuals - simulate residuals as lognormal with sd=srsd
-sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
-		                    dimnames = list(age  = 1, 
-				                            year = dims(true.stock)$minyear:lastyr, 
-										                unit = c("pop1", "pop2"),
-										                iter = 1:nits
-						                   )) 
-								
-#--------------------------------------------------------------------
-# create OM object
-# Note: stocks are projected at Fsq and the values for the first
-#	intermediate year are used in the projections
-# TODO need to check this for my implentation... 
-#--------------------------------------------------------------------
-
-# fwdWindow extends filling with the contents of FLBRP object
-# default in FLBRP is to use the mean of the last three years
-# this line fails validFLBRP check on unadultarated FLCore
-OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
-
-# propagate
-OM <- propagate(OM, nits)
-
-# project to the end of projections at last year F level
-ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val = .15) )
-# if no sr residuals then no noise!
-OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
-OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
-
-
-#====================================================================
-# first simulation
-#====================================================================
-
-refpt <- refpt1
-refpt[] <- c(50000, 0.3) # estimates of SSB and F msy
-
-
-base <- mse(OM = OM, iniyr = iniyr, 
-		        sr.model1 = sr.model1, sr.model2 = sr.model2,
-            sr.residuals = sr.residuals, 
-		        Btrig = 0.5, Ftar = 0.75, refpt = refpt,
-			      seed = NULL)
-
-
-        
-
-plotOM(OM)
-plotOM(base)
-plotAssessment(base)
-
-
-     
+  save(out, file = paste0("choice",i,".rda"))
+}     
 
 
 #attr(base, "summaries")

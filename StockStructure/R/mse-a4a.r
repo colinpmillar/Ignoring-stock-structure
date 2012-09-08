@@ -18,7 +18,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                  survey.q = rep(1e6, dims(OM) $ age),
                  sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))), 
                  CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
-                 seed = 12345) {
+                 seed = NULL, ...) {
   
   #--------------------------------------------------------------------
   # set year's info  
@@ -29,7 +29,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #	advice.year - advice year, the year for which advice is being given (loop)     
   #--------------------------------------------------------------------
   
-  time0 <- system.time()
+  time0 <- proc.time()
   
   #--------------------------------------------------------------------
   # general settings
@@ -120,7 +120,8 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                     f.model = ~ bs(age, 3) + bs(year, 8),
                     q.model = ~ bs(survey.age, 3),
                     r.model = ~ factor(cohort),
-                    control = list(trace = 0, do.fit = TRUE))
+                    control = list(trace = 0, do.fit = TRUE),
+                    ...)
             )
       if (class(out) != "try-error") {
         attr(out, "env") <- NULL
@@ -180,6 +181,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     assign("tmp", OM, envir = .GlobalEnv)
 
     # first we need to find out what the F gives the TAC
+    
     sel <- sweep(harvest(OM), 2:6, fbar(OM), "/")[,ac(data.year)]
     m <- m(OM)[, ac(advice.year)]
     n <- stock.n(OM)[, ac(advice.year)]
@@ -195,8 +197,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
          )
     }
     
-    OM.f <- rep(NA, 10)
-    for (i in 1:10) 
+    
+    OM.f <- rep(NA, dims(OM) $ iter)
+    for (i in 1:dims(OM) $ iter) 
       OM.f[i] <- exp( optimize(findMult, c(-10,10), iter = i) $ minimum )
  
     # set up forecast control - TAC is taken in intermediate year, Fmsy in forecast year
@@ -233,7 +236,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                                       index = index(assessment.index)[,ac(estimate.years)])
   
                                   
-  cat("total time:", system.time() - time0)
+  cat("total time:", c(proc.time() - time0)[3])
                                   
   return(OM[,ac(data.years)])
 }
