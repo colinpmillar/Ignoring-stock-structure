@@ -206,7 +206,7 @@ do.one <- function(stock.id, Ftar = 3, Btar = 60000) {
 #--------------------------------------------------------------------
   pop1 <- window(ASC.stk[[stock.id[1]]], 
       start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-  pop2 <- window(ASC.stk[[stock.id[1]]], 
+  pop2 <- window(ASC.stk[[stock.id[2]]], 
       start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
   dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
   
@@ -285,17 +285,17 @@ do.one <- function(stock.id, Ftar = 3, Btar = 60000) {
 #====================================================================
 
 start.yr <- 40                   # where on the stock sims to start
-nits     <- 5                   # number of iterations
+nits     <- 100                  # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 50                    # number of years to project
+npyr     <- 50                   # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections - note need one 
                                  # extra year of data for predictions
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
 nhyr     <- 15                   # number of historical years
-max.age  <- 10                    # plus group age
-survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
-CV       <- 0.15                 # variability of catch.n and index observations
+max.age  <- 10                   # plus group age
+#survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
+CV       <- 0.01                 # variability of catch.n and index observations
 
 
 #====================================================================
@@ -304,18 +304,20 @@ CV       <- 0.15                 # variability of catch.n and index observations
 
 choices <- cbind( rep(1:5, 5:1), unlist(lapply(2:6, function(i) i:6)))
 
+Ftar <- .5
+Btar <- 1000
+
 #mybuild()
 
-for (i in 5:5) { #nrow(choices)) {
-  cat("i\n")
-  out <- do.one(choices[i,], Ftar = .7, Btar = 1000)
+for (i in 1:nrow(choices)) {
+  out <- do.one(choices[i,], Ftar = Ftar, Btar = Btar)
 
   dev.new()
   plotOM(out)
   dev.new()
   plotAssessment(out)
 
-  save(out, file = paste0("choice",i,".rda"))
+  save(out, file = paste0("comp:",i,"Syr:", start.yr,"-Ftar:", Ftar, "-Btar:", Btar,".rda"))
 }     
 
 

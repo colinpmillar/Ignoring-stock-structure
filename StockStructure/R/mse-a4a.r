@@ -122,14 +122,14 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                     q.model = ~ bs(survey.age, 3),
                     r.model = ~ factor(cohort),
                     control = list(trace = 0, do.fit = TRUE),
-                    ...)
+                    debug = TRUE)
             )
       if (class(out) != "try-error") {
         attr(out, "env") <- NULL
         current.stock[,,,,,i] <- out
-        cat("fbar: " ,round(c(fbar(current.stock[,,,,,i])[,data.year]), 3),
+        cat("\nfbar: " ,round(c(fbar(current.stock[,,,,,i])[,data.year]), 3),
          "   SSB: "  ,round(c(ssb(current.stock[,,,,,i])[,data.year]), 0),
-            "\n")
+            "\n\n")
       } else {
         # drop the iteration!?
       }
@@ -240,8 +240,10 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                                       index = index(assessment.index)[,ac(estimate.years)])
   
   time0 <- c(proc.time() - time0)[3]                                
-  cat("\ntotal time:", floor(time0/60/60), "h", floor((time0 - floor(time0/60/60))/60), time0 - floor(time0/60), "s\n\n")
-                                  
+  cat("\ntotal time:", floor(time0/60/60), "hr", 
+                       floor((time0 - 60*60*floor(time0/60/60))/60), "mins", 
+                       time0 - 60*floor(time0/60), "s\n\n")
+  
   return(OM[,ac(data.years)])
 }
 
