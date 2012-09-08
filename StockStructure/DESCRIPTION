@@ -21,3 +21,5 @@ Collate:
     'mse-a4a.r'
     'mse-summary.r'
     'collapseUnit.r'
+    'gislasim.r'
+    'plotting.r'

@@ -4,9 +4,6 @@
 \alias{mseSumm}
 \alias{mseSumm,}
 \title{Methods to summaries Stock Simulations}
-\arguments{
-  \item{object}{the output from the mse function}
-}
 \value{
   a list
 }

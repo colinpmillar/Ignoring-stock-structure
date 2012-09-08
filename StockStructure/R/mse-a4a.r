@@ -29,6 +29,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #	advice.year - advice year, the year for which advice is being given (loop)     
   #--------------------------------------------------------------------
   
+  time0 <- system.time()
   
   #--------------------------------------------------------------------
   # general settings
@@ -231,6 +232,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
                                       index = index(assessment.index)[,ac(estimate.years)])
   
+                                  
+  cat("total time:", system.time() - time0)
+                                  
   return(OM[,ac(data.years)])
 }
 

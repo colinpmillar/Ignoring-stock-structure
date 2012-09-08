@@ -1,23 +1,25 @@
 
-library(devtools)
-library(testthat)
-library(roxygen2)
+mybuild <- function() {
+  library(devtools)
+  library(testthat)
+  library(roxygen2)
 
-if (0) {
-roxygenize("../../a4a/packages/FLa4a")
+  roxygenize("../../a4a/packages/FLa4a")
 
-pkg <- as.package("../../a4a/packages/FLa4a")
-build(pkg)
-#check(pkg)
-install(pkg)
+  pkg <- as.package("../../a4a/packages/FLa4a")
+  build(pkg)
+  #check(pkg)
+  install(pkg)
+
+  roxygenize("../StockStructure")
+  pkg <- as.package("../StockStructure")
+  build(pkg)
+  #check(pkg)
+  install(pkg)
 }
 
+mybuild()
 
-roxygenize("../StockStructure")
-pkg <- as.package("../StockStructure")
-build(pkg)
-#check(pkg)
-install(pkg)
 rm(list = ls())
 
 #####################################################################
@@ -40,44 +42,6 @@ rm(list = ls())
 options(width = 150)
 library(StockStructure)
 library(FLa4a)
-
-#==============================================================================
-# gislasim - cleaned version
-#==============================================================================
-
-setGeneric("gislasim", function(linf, ...) standardGeneric("gislasim"))
-
-setMethod("gislasim", signature(linf="numeric"), function (linf, t0 = -0.1, a = 1e-05, b = 3, ato95 = 1, sl = 2, sr = 5000, s = 0.9, v = 1000, asym=1, bg=b, iter=1, k="missing", M1="missing", M2="missing", a50="missing", a1="missing"){
-			if(missing(k))  k <- 3.15 * linf^(-0.64)
-			if(missing(M1)) M1 <- 0.55 + 1.44 * log(linf) + log(k) 
-			if(missing(M2)) M2 <- -1.61
-			if(missing(a50)) a50 <- FLAdvice:::invVonB(FLPar(linf=linf, t0=t0, k=k), 0.72 * linf^0.93)
-			if(missing(a1)) a1 <- a50
-			par <- FLPar(linf=linf, k=k, t0 = t0, a = a, b = b, asym=asym, bg=bg, sl=sl, sr=sr, s=s, v=v, M1=M1, M2=M2, ato95 = ato95, a50=a50, a1=a1, iter=iter)
-			attributes(par)$units = c("cm", "kg", "1000s")
-			return(par)
-		})
-
-setMethod("gislasim", signature(linf="FLPar"), function (linf){
-			# Renaming to avoid confusing the argument with the object.
-			# linf here is an FLPar object that can contain several parameters 
-			object <- linf
-			rm(linf)
-			# now the real thing
-			v0 <- dimnames(object)$params	    
-			if(!("linf" %in% v0)) stop("The function requires linf.")
-			par <- FLPar(c(linf=NA, t0 = -0.1, a = 1e-05, b = 3, ato95 = 1, sl = 2, sr = 5000, s = 0.9, v = 1000, asym=1, bg=3, k=NA, M1=NA, M2=NA, a50=NA, a1=NA), iter=ncol(object))
-			dimnames(par)$iter <- dimnames(object)$iter 
-			par[dimnames(object)$params] <- object
-			if(!("bg" %in% v0)) par["bg"] = par["b"]
-			if(!("k" %in% v0)) par["k"] = 3.15 * par["linf"]^(-0.64)
-			if(!("M1" %in% v0)) par["M1"] = 0.55 + 1.44 * log(par["linf"]) + log(par["k"])
-			if(!("M2" %in% v0)) par["M2"] = -1.61
-			if(!("a50" %in% v0)) par["a50"] = FLAdvice:::invVonB(FLPar(linf=par["linf"], t0=par["t0"], k=par["k"]), c(0.72 * par["linf"]^0.93))
-			if(!("a1" %in% v0)) par["a1"] = par["a50"]
-			attributes(par)$units = c("cm", "kg", "1000s")
-			return(par)
-		})
 
 
 #====================================================================
@@ -138,28 +102,68 @@ LHlist
 # get LH pars 
 #------------------------------------------------------------------------------
 
+sim.design <- expand.grid(
+                v90    = 10000, # biomass at 90% recruitment
+		            vrange = c(1.1, 0.9),
+                linf   = c(60, 80, 100),
+                rmax   = 800000)
+
 ASC.brp <- 
-  lapply(1:nrow(LHlist), 
+  lapply(1:nrow(sim.design), 
     function(i) {
-      x <- LHlist[i,]
-      nam <- with(x, paste(FishStock, set, sep = "."))
+      x <- sim.design[i,]
+      nam <- with(x, paste0("linf:", linf, "-v90:", v90 * vrange))
       cat(nam, "\n")
 
-      # get parameters
-      pars <- c("linf", "k", "t0", "a", "b","s","v")
-      par <- FLPar(unlist(x[,pars]), pars)
-      print(par)
-      # complete with gislasim
-      par <- gislasim( par[ pars %in% dimnames( gislasim(0) ) $ params] )
+      # complete M, mat and k with gislasim
+      par <- gislasim(linf = x $ linf,
+			          v = 5000, s = 0.9, # change these later
+					  a = 5e-6, b = 2.9, # weight length
+					  sl = 2, sr = 5000, a1 = 4, # selectivity params
+					  ato95 = 1,  # slope of maturity ogive
+					  t0 = -1)    # fixed vonB param
 
       # run LH
-      res <- lh(par)    
+      res <- lh(par, 
+                range = c(min = 1, max = 20, 
+                          minfbar =4, maxfbar = 8, 
+                          plusgroup = 20), 
+                spwn = 0, fish = 0.5,
+                fbar = seq(0, 2, length = 101))
+	  
+      # adjust recruitment params
+      params(res) <- FLPar(a = x $ rmax, 
+                           b = x $ v90 * x $ vrange / 0.9)
+			res <- brp(res)
+                       
       res @ desc <- nam
       res
     })
 
 
+# refpts
+refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),"harvest"] @ .Data))
+colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
+refs
 
+msyrefs <- round(sapply(ASC.brp, function(x) drop(refpts(x)["msy",c("harvest","yield","rec","ssb")] @ .Data)), 2)
+colnames(msyrefs) <- sapply(ASC.brp, function(x) x @ desc)
+msyrefs
+
+
+# plot a summary of the BRP
+funs <- c("m", "mat", "stock.wt", "landings.sel")
+sum <- do.call(rbind, lapply(ASC.brp, function(brp) 
+          do.call(rbind, lapply(funs, function(f)
+             cbind(as.data.frame(do.call(f, list(brp)))[c("age","data")],
+                   type = f, desc = brp @ desc)
+       ))))
+
+xyplot(data ~ age | type, data = sum, groups = desc, type = "l",
+       scales = list(relation = "free"))
+
+   
+   
 #------------------------------------------------------------------------------
 # simulate F trajectory
 #------------------------------------------------------------------------------
@@ -167,26 +171,24 @@ ASC.brp <-
 ASC.stk <- 
   lapply(ASC.brp, 
     function(x) {
-      cat(x@desc, "\n")
+      cat(x @ desc, "\n")
       Fc <- c( refpts(x)["crash", "harvest"] * 0.7)
-      if (!is.na(Fc)) {	
-        Fmsy <- c(refpts(x)["msy", "harvest"])
-        Ftrg <- c(seq(0, Fc, len = 19), rep(Fc, 20), seq(Fc, Fmsy, len = 10))
-        trg <- fwdControl(data.frame(year = 2:50, quantity = rep('f', 49), val = Ftrg))
-        ex.stk <- as(x, "FLStock")[,1:50]
-        fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))
-      } else {
-        print("NULL")
-		NULL
-      }
+      Fmsy <- c(refpts(x)["msy", "harvest"])
+      nFc <- 60
+      Ftrg <- c(exp( seq(log(Fmsy), log(Fc), len = nFc) ), 
+                seq(Fc, Fmsy, len = 5), 
+                rep(Fmsy, 95 - nFc))
+      Ftrg[] <- Fmsy
+      trg <- fwdControl(data.frame(year = 2:101, quantity = rep('f', 100), val = Ftrg))
+      ex.stk <- as(x, "FLStock")
+      out <- fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))[,-(1)]
+      plot(out)
+      out
     })
 
+ASC.stk <- FLStocks(ASC.stk)
 
-ASC.stk <- FLStocks(ASC.stk[ !sapply(ASC.stk, is.null) ])
-plot(ASC.stk)
-
-
-plot(ASC.stk[[8]])
+sapply(ASC.stk, function(x) tail(c(colSums(stock.n(x))), 1))
 
 #====================================================================
 # Simulation settings
@@ -200,10 +202,10 @@ lastyr   <- iniyr + npyr         # last year in projections - note need one
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
 nhyr     <- 15                   # number of historical years
-max.age  <- 8                    # plus group age
+max.age  <- 10                    # plus group age
 survey.q <- 1e-6 * exp(-2 * 0:7) # survey catchability at age
 CV       <- 0.15                 # variability of catch.n and index observations
-stock.id <- "anglerfish"                    # which wklife stock to use
+stock.id <- c(1,2)                    # which wklife stock to use
 
 #====================================================================
 # Use the stock history from one of the WKLife stocks
@@ -213,17 +215,17 @@ stock.id <- "anglerfish"                    # which wklife stock to use
 #--------------------------------------------------------------------
 # True stock msy reference points
 #--------------------------------------------------------------------
-refpt1 <- ASC.stk[[stock.id]] $ brp[[1]] @ refpts["msy", c("ssb", "harvest")]
-refpt2 <- ASC.stk[[stock.id]] $ brp[[2]] @ refpts["msy", c("ssb", "harvest")]
+refpt1 <- ASC.brp[[stock.id[1]]] @ refpts["msy", c("ssb", "harvest")]
+refpt2 <- ASC.brp[[stock.id[2]]] @ refpts["msy", c("ssb", "harvest")]
 
 
 #--------------------------------------------------------------------
 # True stock history
 #--------------------------------------------------------------------
 start.yr <- 10
-pop1 <- window(ASC.stk[[stock.id]] $ stk[[1]], 
+pop1 <- window(ASC.stk[[stock.id[1]]], 
                start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
-pop2 <- window(ASC.stk[[stock.id]] $ stk[[1]], 
+pop2 <- window(ASC.stk[[stock.id[1]]], 
                start = start.yr, end = start.yr + nhyr - 1)[1:max.age,]
 dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
 
@@ -234,7 +236,7 @@ true.stock[,,1] <- pop1
 true.stock[,,2] <- pop2
 
 # change fbar here also ...
-range(true.stock)[c("minfbar", "maxfbar")] <- c(2,5)
+range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
 range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
 
 
@@ -245,11 +247,10 @@ range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
 # assume a stock recruitment model for each population and estimate 
 # the parameters from it - this serves as the underlying
 # stock recruitment model
-sr.model1 <- list(model = "bevholt", params = params(ASC.stk[[stock.id]] $ brp[[1]]))
-sr.model2 <- list(model = "bevholt", params = params(ASC.stk[[stock.id]] $ brp[[2]]))
+sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[1]]]))
+sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[2]]]))
 
 # stock recruit residuals - simulate residuals as lognormal with sd=srsd
-set.seed(12321)
 sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
 		                    dimnames = list(age  = 1, 
 				                            year = dims(true.stock)$minyear:lastyr, 
@@ -266,6 +267,7 @@ sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd),
 
 # fwdWindow extends filling with the contents of FLBRP object
 # default in FLBRP is to use the mean of the last three years
+# this line fails validFLBRP check on unadultarated FLCore
 OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
 
 # propagate
@@ -282,46 +284,18 @@ OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
 # first simulation
 #====================================================================
 
+refpt <- refpt1
+refpt[] <- c(50000, 0.3) # estimates of SSB and F msy
+
+
 base <- mse(OM = OM, iniyr = iniyr, 
 		        sr.model1 = sr.model1, sr.model2 = sr.model2,
             sr.residuals = sr.residuals, 
-		        Btrig = 0.5, Ftar = 0.75, refpt = refpt1,
+		        Btrig = 0.5, Ftar = 0.75, refpt = refpt,
 			      seed = NULL)
 
 
         
-# some plotting functions:        
-plotOM <- function(OM, probs = c(0.025, .5, .975)) {
-  assessment <- attr(OM, "assessment.data") $ stock
-  
-  myrec <- function (object) stock.n(object)[1,]               
-  fn    <- list(SSB = ssb, Recruits = myrec, Yield = catch, F = fbar)
-  res1  <- ggplotFL:::whooow(OM[,,1], fn, probs)
-  res2  <- ggplotFL:::whooow(OM[,,2], fn, probs)
-  res <- rbind(cbind(res1, population = "1"), cbind(res2, population = "2"))
-  res $ group <- paste(res $ pop, res $ iter)
-  
-  p1 <- ggplot(res) + 
-        geom_line(aes(x = year, y = data, group = group, 
-                      size = iter, lty = iter, col = population)) + 
-        scale_size_manual(values = c(0.5, 1, 0.5), name = "Quantile") + 
-        scale_linetype_manual(values = c(2, 1, 2),  name = "Quantile") +
-        expand_limits(y = 0) + xlab("Year") + ylab("") +
-        facet_wrap(~ qname, scale = "free")
-
-  print(p1)
-  invisible(p1)  
-}        
-
-plotAssessment <- function(OM) {
-  assessment <- attr(OM, "assessment.data") $ stock
-  plotComp(assessment, 
-      fn = list(SSB = ssb, Recruits = myrec, Yield = catch, F = fbar), 
-      probs = c(0.75, 0.5, 0.25), 
-      size= c(0.5, 1, 0.5), 
-      lty = c(2,1,2), 
-      facet = facet_wrap(~qname, scale = "free"))  
-}
 
 plotOM(OM)
 plotOM(base)

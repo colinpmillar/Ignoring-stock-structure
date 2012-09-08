@@ -1,6 +1,6 @@
 #' Methods to summaries Stock Simulations
 #'
-#' @param object the output from the mse function
+#' @object object the output from the mse function
 #'
 #' @return a list
 #' 
