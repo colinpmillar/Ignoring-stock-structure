@@ -1,4 +1,6 @@
 
+rm(list = ls(all = TRUE))
+
 mybuild <- function() {
   library(devtools)
   library(testthat)
@@ -19,8 +21,6 @@ mybuild <- function() {
 }
 
 mybuild()
-
-rm(list = ls(all = TRUE))
 
 #####################################################################
 # first runs for testing
@@ -103,10 +103,10 @@ LH
 #------------------------------------------------------------------------------
 
 sim.design <- expand.grid(
-                v90    = 10000, # biomass at 90% recruitment
+                v90    = 20000, # biomass at 90% recruitment
 		            vrange = c(1.1, 0.9),
                 linf   = c(60, 80, 100),
-                rmax   = 800000)
+                rmax   = 300000)
 
 ASC.brp <- 
   lapply(1:nrow(sim.design), 
@@ -192,7 +192,7 @@ ASC.stk <- FLStocks(ASC.stk)
 
 
 
-do.one <- function(stock.id) {
+do.one <- function(stock.id, Ftar = 3, Btar = 60000) {
   
 #--------------------------------------------------------------------
 # True stock msy reference points
@@ -269,13 +269,12 @@ do.one <- function(stock.id) {
   
   
   refpt <- refpt1
-  refpt[] <- c(50000, 0.3) # estimates of SSB and F msy
+  refpt[] <- c(Btar, Ftar) # estimates of SSB and F msy
   
   base <- mse(OM = OM, iniyr = iniyr, 
       sr.model1 = sr.model1, sr.model2 = sr.model2,
       sr.residuals = sr.residuals, 
-      Btrig = 0.5, Ftar = 0.75, refpt = refpt,
-      seed = NULL, start = "sepVPA")
+      refpt = refpt)
   
   base        
 }        
@@ -286,9 +285,9 @@ do.one <- function(stock.id) {
 #====================================================================
 
 start.yr <- 40                   # where on the stock sims to start
-nits     <- 50                   # number of iterations
+nits     <- 5                   # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 30                    # number of years to project
+npyr     <- 50                    # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections - note need one 
                                  # extra year of data for predictions
 srsd     <- 0.3 			           # sd for S/R
@@ -307,9 +306,9 @@ choices <- cbind( rep(1:5, 5:1), unlist(lapply(2:6, function(i) i:6)))
 
 #mybuild()
 
-for (i in 1:nrow(choices)) {
+for (i in 5:5) { #nrow(choices)) {
   cat("i\n")
-  out <- do.one(choices[i,])
+  out <- do.one(choices[i,], Ftar = .7, Btar = 1000)
 
   dev.new()
   plotOM(out)

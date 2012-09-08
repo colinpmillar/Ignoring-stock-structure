@@ -17,7 +17,7 @@
 mse <- function (OM, iniyr, sr.model1, sr.model2,
                  survey.q = rep(1e6, dims(OM) $ age),
                  sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))), 
-                 CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
+                 CV = 0.15, Ftar = 1, Btrig = 1, refpt,
                  seed = NULL, ...) {
   
   #--------------------------------------------------------------------
@@ -113,11 +113,12 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     #--------------------------------------------------------------
  
     # run assessments
+    year.df <- floor(dims(current.stock) $ year * 0.4)
     for (i in 1:dims(current.stock) $ iter) {
       cat("      Iteration", i, "of", dims(current.stock) $ iter, "\n")
       out <- 
          try(a4aFit(current.stock[,,,,,i], current.index[,,,,,i], 
-                    f.model = ~ bs(age, 3) + bs(year, 8),
+                    f.model = ~ bs(age, 3) + bs(year, year.df),
                     q.model = ~ bs(survey.age, 3),
                     r.model = ~ factor(cohort),
                     control = list(trace = 0, do.fit = TRUE),
@@ -126,6 +127,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
       if (class(out) != "try-error") {
         attr(out, "env") <- NULL
         current.stock[,,,,,i] <- out
+        cat("fbar: " ,round(c(fbar(current.stock[,,,,,i])[,data.year]), 3),
+         "   SSB: "  ,round(c(ssb(current.stock[,,,,,i])[,data.year]), 0),
+            "\n")
       } else {
         # drop the iteration!?
       }
@@ -136,20 +140,20 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     harvest(assessment.stock[,data.year]) <- harvest(current.stock[,data.year])
     
     # save estimated fbar
-    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,ac(current.year - 1)]) 
+    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,data.year]) 
 
     # Harvest Control Rule (HCR)
     # what is the forecast F in advice.year
-    forecast.f <- suppressWarnings( hcr(ssb(current.stock[,ac(data.year)]), refpt) )
+    forecast.f <- suppressWarnings( hcr(ssb(current.stock[,data.year]), refpt) )
 
     # save forecast f
-    MP.summaries[c("forecast.f"), ac(current.year)] <- forecast.f
+    MP.summaries["forecast.f", ac(current.year)] <- forecast.f
     
     # get recruitments for forecasts - GM of recruitment history
     recruitments <- exp( apply(log(rec(current.stock)), 6, mean) )
     recruitments <- FLQuant(rep(c(recruitments), each = 2), 
                             dimnames = list(age  = 1, 
-                                            year = c(current.year, advice.year),
+                                            year = c(ac(current.year), advice.year),
                                             iter = seq(1, dims(current.stock) $ iter)
                             ))
     
@@ -161,7 +165,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                        dim = c(2, 3, dims(current.stock) $ iter), 
                        dimnames = list(1:2, c("min", "val", "max"), 
                                        iter = seq(1, dims(current.stock) $ iter)))
-    trgtArray[1,2,] <- 30
+    trgtArray[1,2,] <- MP.summaries["TAC", data.year] # last years TAC
     trgtArray[2,2,] <- c(forecast.f)
     
     ctrl <- fwdControl( data.frame(year = an(c(current.year, advice.year)), quantity = c("catch", "f")), trgtArray = trgtArray)
@@ -235,8 +239,8 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
                                       index = index(assessment.index)[,ac(estimate.years)])
   
-                                  
-  cat("total time:", c(proc.time() - time0)[3])
+  time0 <- c(proc.time() - time0)[3]                                
+  cat("\ntotal time:", floor(time0/60/60), "h", floor((time0 - floor(time0/60/60))/60), time0 - floor(time0/60), "s\n\n")
                                   
   return(OM[,ac(data.years)])
 }
