@@ -144,13 +144,10 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
 
     # Harvest Control Rule (HCR)
     # estimate refpts
-    refpt <- computeRefpts(FLBRP(assessment.stock))[which.ref,]
+    refpt <- computeRefpts(FLBRP(current.stock))[which.ref,]
     print(refpt)
     # what is the forecast F in advice.year
-    forecast.f <- 
-        sapply(1:dims(current.stock) $ iter,
-               function(i)
-                 hcr(ssb(current.stock[,data.year,,,,i]), refpt[,,i], Ftar = Ftarg, Btrig = Btrig))
+    forecast.f <- hcr(ssb(current.stock[,data.year]), refpt, Ftar = Ftarg, Btrig = Btrig)
     print(forecast.f)            
 
     # save forecast f

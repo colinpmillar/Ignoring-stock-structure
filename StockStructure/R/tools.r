@@ -30,3 +30,32 @@ getFunctions <- function(x, show = TRUE)
 	names(funs) <- sapply(findMethods(x) @ .Data, function(x) paste(slot(x, "target") @ .Data, collapse = ", "))
 	if (show) funs else names(funs)
 }
+
+#' build a4a and stock structure package
+#'
+#' 
+#' @return NULL
+#' @author Colin Millar \email{colin.millar@@jrc.ec.europa.eu}
+#' @export
+#' @examples
+#' x <- 1
+mybuild <- function() {
+  require(devtools)
+  require(testthat)
+  require(roxygen2)
+  
+  #roxygenize("../../a4a/packages/FLa4a")
+  
+  #pkg <- as.package("../../a4a/packages/FLa4a")
+  #build(pkg)
+  #check(pkg)
+  #install(pkg)
+  
+  roxygenize("../StockStructure")
+  pkg <- as.package("../StockStructure")
+  build(pkg)
+  #check(pkg)
+  install(pkg)
+  
+  invisible(NULL)
+}
