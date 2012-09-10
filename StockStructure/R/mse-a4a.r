@@ -17,8 +17,8 @@
 mse <- function (OM, iniyr, sr.model1, sr.model2,
                  survey.q = rep(1e6, dims(OM) $ age),
                  sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))), 
-                 CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
-                 seed = 12345) {
+                 CV = 0.15, Ftarg = 1, Btrig = 1, which.ref = "f0.1",
+                 seed = NULL, ...) {
   
   #--------------------------------------------------------------------
   # set year's info  
@@ -29,6 +29,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #	advice.year - advice year, the year for which advice is being given (loop)     
   #--------------------------------------------------------------------
   
+  time0 <- proc.time()
   
   #--------------------------------------------------------------------
   # general settings
@@ -104,26 +105,31 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
         rlnorm(prod(dim(index(assessment.index))[-2]), 0, CV)
     
     # the stock assessment data!
-    current.stock <- window(assessment.stock, end = an(data.year))
-    current.index  <- window(assessment.index, end = an(data.year))
+    current.stock <- window(assessment.stock, start = an(data.year) - 13, end = an(data.year))
+    current.index <- window(assessment.index, start = an(data.year) - 13, end = an(data.year))
      
     #--------------------------------------------------------------
     # management procedure
     #--------------------------------------------------------------
  
     # run assessments
+    year.df <- floor(dims(current.stock) $ year * 0.4)
     for (i in 1:dims(current.stock) $ iter) {
       cat("      Iteration", i, "of", dims(current.stock) $ iter, "\n")
       out <- 
          try(a4aFit(current.stock[,,,,,i], current.index[,,,,,i], 
-                    f.model = ~ bs(age, 3) + bs(year, 8),
+                    f.model = ~ bs(age, 3) + factor(year),
                     q.model = ~ bs(survey.age, 3),
                     r.model = ~ factor(cohort),
-                    control = list(trace = 0, do.fit = TRUE))
+                    control = list(trace = 0, do.fit = TRUE),
+                    debug = TRUE)
             )
       if (class(out) != "try-error") {
         attr(out, "env") <- NULL
         current.stock[,,,,,i] <- out
+        cat("\nfbar: " ,round(c(fbar(current.stock[,,,,,i])[,data.year]), 3),
+         "   SSB: "  ,round(c(ssb(current.stock[,,,,,i])[,data.year]), 0),
+            "\n\n")
       } else {
         # drop the iteration!?
       }
@@ -134,20 +140,27 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     harvest(assessment.stock[,data.year]) <- harvest(current.stock[,data.year])
     
     # save estimated fbar
-    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,ac(current.year - 1)]) 
+    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,data.year]) 
 
     # Harvest Control Rule (HCR)
+    # estimate refpts
+    refpt <- computeRefpts(FLBRP(assessment.stock))[which.ref,]
+    print(refpt)
     # what is the forecast F in advice.year
-    forecast.f <- suppressWarnings( hcr(ssb(current.stock[,ac(data.year)]), refpt) )
+    forecast.f <- 
+        sapply(1:dims(current.stock) $ iter,
+               function(i)
+                 hcr(ssb(current.stock[,data.year,,,,i]), refpt[,,i], Ftar = Ftarg, Btrig = Btrig))
+    print(forecast.f)            
 
     # save forecast f
-    MP.summaries[c("forecast.f"), ac(current.year)] <- forecast.f
+    MP.summaries["forecast.f", ac(current.year)] <- forecast.f
     
     # get recruitments for forecasts - GM of recruitment history
     recruitments <- exp( apply(log(rec(current.stock)), 6, mean) )
     recruitments <- FLQuant(rep(c(recruitments), each = 2), 
                             dimnames = list(age  = 1, 
-                                            year = c(current.year, advice.year),
+                                            year = c(ac(current.year), advice.year),
                                             iter = seq(1, dims(current.stock) $ iter)
                             ))
     
@@ -159,7 +172,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
                        dim = c(2, 3, dims(current.stock) $ iter), 
                        dimnames = list(1:2, c("min", "val", "max"), 
                                        iter = seq(1, dims(current.stock) $ iter)))
-    trgtArray[1,2,] <- 30
+    trgtArray[1,2,] <- MP.summaries["TAC", data.year] # last years TAC
     trgtArray[2,2,] <- c(forecast.f)
     
     ctrl <- fwdControl( data.frame(year = an(c(current.year, advice.year)), quantity = c("catch", "f")), trgtArray = trgtArray)
@@ -179,6 +192,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     assign("tmp", OM, envir = .GlobalEnv)
 
     # first we need to find out what the F gives the TAC
+    
     sel <- sweep(harvest(OM), 2:6, fbar(OM), "/")[,ac(data.year)]
     m <- m(OM)[, ac(advice.year)]
     n <- stock.n(OM)[, ac(advice.year)]
@@ -194,8 +208,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
          )
     }
     
-    OM.f <- rep(NA, 10)
-    for (i in 1:10) 
+    
+    OM.f <- rep(NA, dims(OM) $ iter)
+    for (i in 1:dims(OM) $ iter) 
       OM.f[i] <- exp( optimize(findMult, c(-10,10), iter = i) $ minimum )
  
     # set up forecast control - TAC is taken in intermediate year, Fmsy in forecast year
@@ -231,9 +246,113 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
                                       index = index(assessment.index)[,ac(estimate.years)])
   
+  time0 <- c(proc.time() - time0)[3]                                
+  cat("\ntotal time:", floor(time0/60/60), "hr", 
+                       floor((time0 - 60*60*floor(time0/60/60))/60), "mins", 
+                       time0 - 60*floor(time0/60), "s\n\n")
+  
   return(OM[,ac(data.years)])
 }
 
+
+
+
+#' wrapper for mse function - specific for this task!
+#'
+#' 
+#' @param stock.id an FLStock object
+#' @param Ftarg the first year of projections
+#' @param Btrig
+#' @param start.yr 
+#' @return an FLStock object
+#' @note \code{mse} is based on code written by 
+#'       Ernesto Jardim \email{ernesto.jardim@@jrc.ec.europa.eu}
+#' @author Colin Millar \email{colin.millar@@jrc.ec.europa.eu}
+#' @seealso \code{\link{FLStock}}, \code{\link{fwd}}, \code{\link{hcr}}
+#' @export
+doOne <- function(stock.id, Ftarg = 0.75, Btrig = 0.75,
+                  start.yr = c(1,1), which.ref = "f0.1") {
+  
+#--------------------------------------------------------------------
+# True stock msy reference points
+#--------------------------------------------------------------------
+  refpt1 <- ASC.brp[[stock.id[1]]] @ refpts["msy", c("ssb", "harvest")]
+  refpt2 <- ASC.brp[[stock.id[2]]] @ refpts["msy", c("ssb", "harvest")]
+  
+  
+#--------------------------------------------------------------------
+# True stock history
+#--------------------------------------------------------------------
+  pop1 <- window(ASC.stk[[stock.id[1]]], 
+      start = start.yr[1], end = start.yr[1] + nhyr - 1)[1:max.age,]
+  pop2 <- window(ASC.stk[[stock.id[2]]], 
+      start = start.yr[2], end = start.yr[2] + nhyr - 1)[1:max.age,]
+  dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
+  
+  true.stock <- pop1
+  true.stock <- FLCore::expand(true.stock, unit = c("unique", "pop1", "pop2"))[,,2:3]
+  
+  true.stock[,,1] <- pop1
+  true.stock[,,2] <- pop2
+  rm(pop1, pop2)
+  
+# change fbar here also ...
+  range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
+  range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
+  
+  
+#====================================================================
+# Stock recruit model
+#====================================================================
+  
+# assume a stock recruitment model for each population and estimate 
+# the parameters from it - this serves as the underlying
+# stock recruitment model
+  sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[1]]]))
+  sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[2]]]))
+  
+# stock recruit residuals - simulate residuals as lognormal with sd=srsd
+  sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
+      dimnames = list(age  = 1, 
+          year = dims(true.stock)$minyear:lastyr, 
+          unit = c("pop1", "pop2"),
+          iter = 1:nits
+      )) 
+  
+#--------------------------------------------------------------------
+# create OM object
+# Note: stocks are projected at Fsq and the values for the first
+#	intermediate year are used in the projections
+# TODO need to check this for my implentation... 
+#--------------------------------------------------------------------
+  
+# fwdWindow extends filling with the contents of FLBRP object
+# default in FLBRP is to use the mean of the last three years
+# this line fails validFLBRP check on unadultarated FLCore
+  OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
+  
+# propagate
+  OM <- propagate(OM, nits)
+  
+# project to the end of projections at last year F level
+  Fsq <- c(fbar(OM[, ac(iniyr)]))[1]
+  ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val =  Fsq))
+# if no sr residuals then no noise!
+  OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
+  OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
+  
+#====================================================================
+# first simulation
+#====================================================================
+  
+  base <- mse(OM = OM, iniyr = iniyr, 
+      sr.model1 = sr.model1, sr.model2 = sr.model2,
+      sr.residuals = sr.residuals, 
+      Ftarg = Ftarg, Btrig = Btrig,
+      which.ref = which.ref)
+  
+  base        
+}        
 
 
 

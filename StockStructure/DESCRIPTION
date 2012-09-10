@@ -12,7 +12,8 @@ Depends:
     FLAssess,
     FLAdvice,
     FLash,
-    MASS
+    MASS,
+    multicore,
 Collate:
     'StockStructure-package.r'
     'tools.r'
@@ -21,3 +22,5 @@ Collate:
     'mse-a4a.r'
     'mse-summary.r'
     'collapseUnit.r'
+    'gislasim.r'
+    'plotting.r'

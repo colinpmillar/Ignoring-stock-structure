@@ -6,8 +6,8 @@ and stock recruit function.}
   mse(OM, iniyr, sr.model1, sr.model2,
     survey.q = rep(1e+06, dims(OM)$age),
     sr.residuals = FLQuant(1, dimnames = dimnames(window(rec(OM), start = iniyr))),
-    CV = 0.15, Ftar = 0.75, Btrig = 0.75, refpt,
-    seed = 12345)
+    CV = 0.15, Ftarg = 1, Btrig = 1, which.ref = "f0.1",
+    seed = NULL, ...)
 }
 \arguments{
   \item{OM}{an FLStock object}
