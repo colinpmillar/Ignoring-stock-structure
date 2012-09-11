@@ -73,33 +73,21 @@ library(StockStructure)
 #------------------------------------------------------------------------------
 
 
-bh   <- function(ssb, max, slope) max * ssb / (max/slope + ssb)
-rick <- function(ssb, max, slope) slope * ssb * exp( - slope / (max  * exp(1)) * ssb)
-
-max <- 100
-slope <- 10
-
-ssb <- seq(0, 100, length = 1000)
-plot(ssb, ssb, ylim = c(0, max), xlim = c(0, max(ssb)), type = "n")
-abline(a = 0, b = slope, lty = 2)
-abline(h = max, lty = 2)
-
-lines(ssb, bh(ssb, max, slope))
-lines(ssb, rick(ssb, max, slope))
-
 
 sim.design <- expand.grid(
     v90    = 20000, # biomass at 90% recruitment
-    vrange = c(1.1, 0.9),
+    vrange = c(1),
     linf   = c(60, 80, 100),
     rmax   = 300000,
-    rrange = c(1, 1.2)) 
+    rrange = c(1, 1.5),
+    sr     = c("bevholt", "ricker"),
+    stringsAsFactors = FALSE) 
 
 ASC.brp <- 
     lapply(1:nrow(sim.design), 
         function(i) {
           x <- sim.design[i,]
-          nam <- with(x, paste0("linf:", linf, "-v90:", v90 * vrange))
+          nam <- with(x, paste0("linf:", linf, "-v90:", v90 * vrange,"-rmax:", rmax * rrange, "-sr:",sr))
           cat(nam, "\n")
           
           # complete M, mat and k with gislasim
@@ -116,24 +104,26 @@ ASC.brp <-
                   minfbar =4, maxfbar = 8, 
                   plusgroup = 20), 
               spwn = 0, fish = 0.5,
-              fbar = seq(0, 2, length = 101))
+              fbar = seq(0, 2, length = 101),
+              sr = x$sr)
           
           # adjust recruitment params
-          params(res) <- FLPar(a = x $ rmax, 
-              b = x $ v90 * x $ vrange / 0.9)
+          if (x $ sr == "bevholt") {
+            params(res) <- FLPar(a = x$rmax * x$rrange, b = x$v90 * x$vrange / 0.9)
+          } else {
+            params(res) <- FLPar(a = x$rmax * x$rrange * exp(1) / (x$v90 * x$vrange), b = 1 / (x$v90 * x$vrange))
+          }  
           res <- brp(res)
           
           res @ desc <- nam
           res
         })
 
-rm(sim.design)
-
 ## refpts
-#refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),"harvest"] @ .Data))
-#colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
-#refs
-#
+refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),"harvest"] @ .Data))
+colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
+refs
+
 #msyrefs <- round(sapply(ASC.brp, function(x) drop(refpts(x)["msy",c("harvest","yield","rec","ssb")] @ .Data)), 2)
 #colnames(msyrefs) <- sapply(ASC.brp, function(x) x @ desc)
 #msyrefs
@@ -153,6 +143,12 @@ rm(sim.design)
 #    scales = list(relation = "free"))
 #
 #plot(p)
+
+ssb <- seq(1, max(sim.design $ v90) * 5, length = 100)
+rec.df <- expand.grid(ssb = ssb, group = 1:length(ASC.brp))
+rec.df $ rec <- unlist( lapply(ASC.brp, function(x) eval( model(x)[[3]], c(list(ssb = ssb), as.list(drop(params(x) @ .Data))))))
+
+xyplot(rec ~ ssb, groups = group, data = rec.df, type = "l")
 
 
 #------------------------------------------------------------------------------

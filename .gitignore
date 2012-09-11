@@ -28,6 +28,5 @@
 *.project
 *.settings
 *.metadata
-*.tar.gz
 .gitignore~
 *.Rnw.bak
