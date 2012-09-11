@@ -17,8 +17,12 @@
 #--------------------------------------------------------------------
 #####################################################################
 
-pkgs <- dir("../software", full = TRUE)
+# add cran mirror to this line...
+install.packages(c("splines", "numDeriv", "Matrix", "multicore", 
+                   "ggplot2", "plyr", "akima", "grid", "lattice", "MASS"))
 
+# order packages in correct order - FLCore first etc...
+pkgs <- dir("../software", full = TRUE)
 for (pkg in pkgs) {
   cat(pkg, "\n")
   install.packages(pkg, repos = NULL)
