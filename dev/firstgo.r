@@ -16,6 +16,14 @@
 #	advYr - advice year, the year for which advice is being given (loop)     
 #--------------------------------------------------------------------
 #####################################################################
+
+pkgs <- dir("../software", full = TRUE)
+
+for (pkg in pkgs) {
+  cat(pkg, "\n")
+  install.packages(pkg, repos = NULL)
+}
+
 options(width = 150)
 library(StockStructure)
 
