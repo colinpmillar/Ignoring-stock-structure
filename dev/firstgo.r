@@ -21,12 +21,9 @@
 install.packages(c("splines", "numDeriv", "Matrix", "multicore", 
                    "ggplot2", "plyr", "akima", "grid", "lattice", "MASS"))
 
-# order packages in correct order - FLCore first etc...
+# install.packages should install packages in correct order - FLCore first etc...
 pkgs <- dir("../software", full = TRUE)
-for (pkg in pkgs) {
-  cat(pkg, "\n")
-  install.packages(pkg, repos = NULL)
-}
+install.packages(pkgs, repos = NULL)
 
 options(width = 150)
 library(StockStructure)
@@ -194,7 +191,7 @@ ASC.stk <-
                
 nits     <- 1                  # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 20                   # number of years to project
+npyr     <- 2                   # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
@@ -208,19 +205,23 @@ CV       <- 0.1                 # variability of catch.n and index observations
 #====================================================================
 
 #the following is hard coded for 6 stock unit types per SRR
-choices <- data.frame(s1 = rep(1:5, 5:1), s2 = unlist(lapply(2:6, function(i) i:6)))
+n.stks <- length(ASC.brp) / 2
+choices <- data.frame(s1 = rep(1:n.stks, n.stks:1), s2 = unlist(lapply(1:n.stks, function(i) i:n.stks)))
 
 # where on the stock sims to start
 #  -- start both stocks from an expoited state
-choices $ start.yr1 <- 40
-choices $ start.yr2 <- 40
+choices $ syr1 <- 40
+choices $ syr2 <- 40
 
+# bevholt comes fist! make sure!! use 0.75 of f0.1 and 1 of fmsy
 choices $ Btrig <- 0.75
 choices <- rbind(choices, choices)
 choices $ Ftarg <- rep(c(0.75, 1), each = nrow(choices)/2)
 
-choices $ s1 <- choices $ s1 + rep(c(0, 6), each = nrow(choices)/2)
-choices $ s2 <- choices $ s2 + rep(c(0, 6), each = nrow(choices)/2)
+choices $ s1 <- choices $ s1 + rep(c(0, n.stks), each = nrow(choices)/2)
+choices $ s2 <- choices $ s2 + rep(c(0, n.stks), each = nrow(choices)/2)
+choices $ ref <- rep(c("f0.1", "msy"), each = nrow(choices)/2)
+choices $ srr <- rep(c("bevh", "rick"), each = nrow(choices)/2)
 
 
 fname <- 
@@ -231,20 +232,26 @@ fname <-
              ".rda")
 
 #mybuild()
+set.seed(1734876)
+seeds <- sample(1e7, 42)
+# for set.seed(1734876) we get:
+#4238224 8105965  380861 7140042 1197589 8984019 8242492 7539883 1822141 9835998 6339942 4149751 2488340 1205709 2121215 7025869  909545 2923516
+#6670903 9087699  864331 8126975 3416187 2130411 8218030 1577699 9410389 9167451 7350541 1061413 6208053 7427966 9170855 2296642 3436897 1593588
+#1812319 4647062 7237014 5040458 8799765 2213020
 
-set.seed(845863298)
 time0 <- proc.time()
 mc.out <-
-mclapply(1:4, # nrow(choices),    
+lapply(1:1, # nrow(choices),    
   function(i) {
+    set.seed( seeds[i] )
     x <- choices[i,]
     out <- doOne(stock.id = c(x $ s1, x $ s2), 
                   Ftarg = x $ Ftarg, Btrig = x $ Btrig,
-                  start.yr = c(x $ start.yr1, x $ start.yr2),
+                  start.yr = c(x $ syr1, x $ syr2),
                   which.ref = "f0.1")
-              
-    assign(paste0("comp", i), out)          
-    save(paste0("comp", i), file = fname(i))
+    attr(out, "choices") <- x          
+    assign(paste0("comp", i), out, env = environment())
+    save(list = paste0("comp", i), file = fname(i))
 
     return(fname(i))
   }
