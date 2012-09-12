@@ -19,7 +19,6 @@ Depends:
 Collate:
     'StockStructure-package.r'
     'tools.r'
-    'wklife-data.r'
     'as-numeric-generic.r'
     'mse-a4a.r'
     'mse-summary.r'

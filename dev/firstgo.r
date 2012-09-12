@@ -18,8 +18,9 @@
 #####################################################################
 
 # add cran mirror to this line...
-install.packages(c("splines", "numDeriv", "Matrix", "multicore", 
-                   "ggplot2", "plyr", "akima", "grid", "lattice", "MASS"))
+install.packages(c("numDeriv", "Matrix", "multicore", 
+                   "ggplot2", "plyr", "akima", "lattice", "MASS"),
+                 repos = "http://star-www.st-andrews.ac.uk/cran/")
 
 # install.packages should install packages in correct order - FLCore first etc...
 pkgs <- dir("../software", full = TRUE)
@@ -28,7 +29,7 @@ install.packages(pkgs, repos = NULL)
 options(width = 150)
 library(StockStructure)
 
-#mybuild() # rebuilds package... only if directory structure is correct!
+#mybuild() # roxygenates and rebuilds package... only if directory structure is correct!
 
 #==============================================================================
 # get ICES recruitment data
@@ -131,9 +132,9 @@ ASC.brp <-
         })
 
 ## refpts
-refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"), "harvest"] @ .Data))
-colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
-refs
+#refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"), "harvest"] @ .Data))
+#colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
+#refs
 
 #msyrefs <- round(sapply(ASC.brp, function(x) drop(refpts(x)["msy",c("harvest","yield","rec","ssb")] @ .Data)), 2)
 #colnames(msyrefs) <- sapply(ASC.brp, function(x) x @ desc)
@@ -189,9 +190,9 @@ ASC.stk <-
 # Simulation settings
 #====================================================================
                
-nits     <- 1                  # number of iterations
+nits     <- 2                  # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 2                   # number of years to project
+npyr     <- 10                   # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
@@ -259,5 +260,6 @@ lapply(1:1, # nrow(choices),
 time1 <- proc.time()
 print(time1 - time0)
 
+base <- load(fname(1))
 
 #attr(base, "summaries")

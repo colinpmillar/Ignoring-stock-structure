@@ -64,19 +64,14 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   # objects to store TACs, catch, fbar and observations of these ...
   # might put them all into one
   #--------------------------------------------------------------------
-  OM.summaries <- catch(OM)[,ac(data.years)]
   MP.summaries <- catch(assessment.stock)[,ac(data.years)]
   # hack to overcome exported method by reshape
-  OM.summaries <- FLCore::expand(OM.summaries, age=c("all", "catch", "fbar", "forecast.f"))
-  MP.summaries <- FLCore::expand(MP.summaries, age=c("all", "catch", "fbar", "forecast.f"))
-  dimnames(OM.summaries)[[1]][1] <- "TAC" 
+  MP.summaries <- FLCore::expand(MP.summaries, age=c("all", "catch", "fbar", "forecast.f", "fref", "ssbref"))
   dimnames(MP.summaries)[[1]][1] <- "TAC"
   
-  # put in some values
-  OM.summaries["fbar"] <- fbar(OM)[,ac(data.years)] 
-  OM.summaries["catch"] <- catch(OM)[,ac(data.years)]
-  MP.summaries["catch"] <- catch(assessment.stock)
-  
+  # remove values and add TAC for last year as initial years catch
+  MP.summaries[] <- NA
+  MP.summaries["TAC", ac(iniyr-1)] <- unitSums( catch(OM)[,ac(iniyr)] )
   
   #--------------------------------------------------------------------
   # Go !!
@@ -136,16 +131,18 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     }
     
     # save estimated F and N
-    stock.n(assessment.stock[,data.year]) <- stock.n(current.stock[,data.year])
-    harvest(assessment.stock[,data.year]) <- harvest(current.stock[,data.year])
+    stock.n(assessment.stock[, data.year]) <- stock.n(current.stock[, data.year])
+    harvest(assessment.stock[, data.year]) <- harvest(current.stock[, data.year])
     
     # save estimated fbar
-    MP.summaries[c("fbar"), ac(current.year)] <- fbar(current.stock[,data.year]) 
+    MP.summaries["fbar", ac(current.year)] <- fbar(current.stock[, data.year]) 
 
     # Harvest Control Rule (HCR)
     # estimate refpts
     refpt <- computeRefpts(FLBRP(current.stock))[which.ref,]
-    print(refpt)
+    MP.summaries["fref"  , ac(current.year)] <- refpt[, "harvest"]
+    MP.summaries["ssbref", ac(current.year)] <- refpt[, "ssb"]
+    
     # what is the forecast F in advice.year
     forecast.f <- hcr(ssb(current.stock[,data.year]), refpt, Ftar = Ftarg, Btrig = Btrig)
     print(forecast.f)            
@@ -225,23 +222,18 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
     OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2, sr.residuals = sr.residuals[,advice.year,2])
     
     
-    # check this should be pretty much zero so we have found the f that results
-    # in the TAC :)
-    # unitSums(catch(OM)[,advice.year]) - tac
-    OM.summaries["TAC"       , ac(current.year)] <- catch(OM)[,ac(advice.year)]
-    OM.summaries["catch"     , ac(current.year)] <- NA # catch(OM)[,ac(current.year)]
-    OM.summaries["fbar"      , ac(current.year)] <- fbar(OM)[,ac(advice.year)]
-    OM.summaries["forecast.f", ac(current.year)] <- NA # OM.f
+    # check this should be the same as the TAC set in the MP -  MP.summaries["TAC", ac(current.year)]
+    MP.summaries["catch", ac(current.year)] <- unitSums( catch(OM)[,ac(advice.year)] ) 
     
   } # end year loop
   
-  harvest(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
-  stock.n(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
+  #harvest(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
+  #stock.n(assessment.stock)[,ac(seq(dims(OM) $ minyear, iniyr - 2))] <- NA # take out non-estimated data
   
-  catch(assessment.stock) <- computeCatch(assessment.stock)
-  attr(OM, "summaries") <- list(OM = OM.summaries, MP = MP.summaries)
-  attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
-                                      index = index(assessment.index)[,ac(estimate.years)])
+  #catch(assessment.stock) <- computeCatch(assessment.stock)
+  attr(OM, "summaries")   <- MP.summaries
+  #attr(OM, "assessment.data") <- list(stock = assessment.stock[,ac(estimate.years)], 
+  #                                   index = index(assessment.index)[,ac(estimate.years)])
   
   time0 <- c(proc.time() - time0)[3]                                
   cat("\ntotal time:", floor(time0/60/60), "hr", 
