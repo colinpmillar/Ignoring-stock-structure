@@ -190,9 +190,9 @@ ASC.stk <-
 # Simulation settings
 #====================================================================
                
-nits     <- 2                  # number of iterations
+nits     <- 250                  # number of iterations
 iniyr    <- 2000                 # first year in projections
-npyr     <- 10                   # number of years to project
+npyr     <- 30                   # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections
 srsd     <- 0.3 			           # sd for S/R
 units    <- 2                    # number of stock units
