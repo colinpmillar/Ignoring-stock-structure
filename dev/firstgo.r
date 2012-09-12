@@ -87,10 +87,10 @@ library(StockStructure)
 
 
 sim.design <- expand.grid(
-    v90    = 20000, # biomass at 90% recruitment
+    v90     = 200000, # biomass at 90 % recruitment
     vrange = c(1),
     linf   = c(60, 80, 100),
-    rmax   = 300000,
+    rmax   = 350000,
     rrange = c(1, 1.5),
     sr     = c("bevholt", "ricker"),
     stringsAsFactors = FALSE) 
@@ -121,9 +121,11 @@ ASC.brp <-
           
           # adjust recruitment params
           if (x $ sr == "bevholt") {
-            params(res) <- FLPar(a = x$rmax * x$rrange, b = x$v90 * x$vrange / 0.9)
+            params(res) <- FLPar(a = x$rmax * x$rrange, b = with(x, (1-.9) / .9 * v90 * vrange))
           } else {
-            params(res) <- FLPar(a = x$rmax * x$rrange * exp(1) / (x$v90 * x$vrange), b = 1 / (x$v90 * x$vrange))
+            b <- 1 / (x$v90 * x$vrange / .9 * .4)
+            a <- x$rmax * x$rrange * b * exp(1)
+            params(res) <- FLPar(a = a, b = b)
           }  
           res <- brp(res)
           
@@ -132,7 +134,7 @@ ASC.brp <-
         })
 
 ## refpts
-refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"),"harvest"] @ .Data))
+refs <- sapply(ASC.brp, function(x) drop(refpts(x)[c("msy", "crash"), "harvest"] @ .Data))
 colnames(refs) <- sapply(ASC.brp, function(x) x @ desc)
 refs
 
@@ -156,11 +158,11 @@ refs
 #
 #plot(p)
 
-ssb <- seq(1, max(sim.design $ v90) * 5, length = 100)
-rec.df <- expand.grid(ssb = ssb, group = 1:length(ASC.brp))
-rec.df $ rec <- unlist( lapply(ASC.brp, function(x) eval( model(x)[[3]], c(list(ssb = ssb), as.list(drop(params(x) @ .Data))))))
+#ssb <- seq(1, max(sim.design $ v90/.9), length = 100)
+#rec.df <- expand.grid(ssb = ssb, group = 1:length(ASC.brp))
+#rec.df $ rec <- unlist( lapply(ASC.brp, function(x) eval( model(x)[[3]], c(list(ssb = ssb), as.list(drop(params(x) @ .Data))))))
 
-xyplot(rec ~ ssb, groups = group, data = rec.df, type = "l")
+#xyplot(rec ~ ssb, groups = group, data = rec.df, type = "l")
 
 
 #------------------------------------------------------------------------------
@@ -171,7 +173,7 @@ ASC.stk <-
     lapply(ASC.brp, 
         function(x) {
           cat(x @ desc, "\n")
-          Fc <- c(refpts(x)["crash", "harvest"]) * .8
+          Fc <- c(refpts(x)["crash", "harvest"])
           Fmsy <- c(refpts(x)["msy", "harvest"])
           nFc <- 60
           Ftrg <- c(exp( seq(log(Fmsy), log(Fc), len = nFc) ), 
@@ -179,7 +181,7 @@ ASC.stk <-
               rep(Fmsy, 95 - nFc))
           trg <- fwdControl(data.frame(year = 2:101, quantity = rep('f', 100), val = Ftrg))
           ex.stk <- as(x, "FLStock")
-          out <- fwd(ex.stk, ctrl = trg, sr = list(model = "bevholt", params = params(x)))[,-(1)]
+          out <- fwd(ex.stk, ctrl = trg, sr = list(model = model(x), params = params(x)))[,-(1)]
           #plot(out)
           out
         })
@@ -190,7 +192,7 @@ ASC.stk <-
 # Simulation settings
 #====================================================================
                
-nits     <- 20                  # number of iterations
+nits     <- 1                  # number of iterations
 iniyr    <- 2000                 # first year in projections
 npyr     <- 20                   # number of years to project
 lastyr   <- iniyr + npyr         # last year in projections
@@ -205,6 +207,7 @@ CV       <- 0.1                 # variability of catch.n and index observations
 # Use the stock history from one of the WKLife stocks
 #====================================================================
 
+#the following is hard coded for 6 stock unit types per SRR
 choices <- data.frame(s1 = rep(1:5, 5:1), s2 = unlist(lapply(2:6, function(i) i:6)))
 
 # where on the stock sims to start
@@ -215,6 +218,10 @@ choices $ start.yr2 <- 40
 choices $ Btrig <- 0.75
 choices <- rbind(choices, choices)
 choices $ Ftarg <- rep(c(0.75, 1), each = nrow(choices)/2)
+
+choices $ s1 <- choices $ s1 + rep(c(0, 6), each = nrow(choices)/2)
+choices $ s2 <- choices $ s2 + rep(c(0, 6), each = nrow(choices)/2)
+
 
 fname <- 
     function(i) 
@@ -235,8 +242,9 @@ mclapply(1:4, # nrow(choices),
                   Ftarg = x $ Ftarg, Btrig = x $ Btrig,
                   start.yr = c(x $ start.yr1, x $ start.yr2),
                   which.ref = "f0.1")
-  
-    save(out, file = fname(i))
+              
+    assign(paste0("comp", i), out)          
+    save(paste0("comp", i), file = fname(i))
 
     return(fname(i))
   }
