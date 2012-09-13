@@ -1,0 +1,155 @@
+\documentclass{beamer}
+
+\include{eu-beamer-template} 
+\usepackage{arev,t1enc}
+\usepackage{amsmath}
+
+\usepackage[T1]{fontenc}
+\fontfamily{verdana}\selectfont
+
+\title{The Costs of Ignoring Stock Structure}
+%\subtitle{}
+\author{Colin Millar\\Ernesto Jardim\\Iago Mosqueira\\Chato Osio}
+\institute{European Commission\\ Joint Research Center}
+\subject{Fisheries Management}
+
+\usepackage{Sweave}
+\begin{document}
+\setkeys{Gin}{width=1.1\textwidth}
+
+% set up R environment
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Motivation}
+
+  \begin{itemize}
+    \item By:
+    \begin{itemize}
+      \item Simulating a range of realistic stock dynamics
+      \item Modelling fisheries management
+    \end{itemize}
+    \item We aim to:
+    \begin{itemize}
+      \item Investigate managing two stocks as one
+      \item Identify risks
+      \item Suggest robust reference points
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{assessment 4 all - a4a}
+  Some notes on a4a  
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  Population model
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  Observation model
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  Management procedure
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  Feed back into the population model
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Simulation design}
+  The MSE diagram
+  A picture of the set up, with arrows that show the data input, 2 stocks into 1 data set and a MP that goes from TAC to F
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Choosing Parameter Values}
+  \begin{itemize}
+    \item the lh() function
+    \item the gislasim function
+    \item recruitment levels - ICES north sea estimates
+    \item shapes designed to be viable under fishing
+  \end{itemize}  
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{The Simulated Sub Stock Units}
+  Show some of the stocks explaining the fishing pattern
+  We use take as a start point the 40th year of fishing
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Scenarios}
+Show table of what scenarios
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{One full result}
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{withoutheadline}
+\begin{frame}{Results Summary}
+\end{frame}
+\end{withoutheadline}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Final Thoughts}
+  \begin{itemize}
+    \item Improve simulation speed by running hadoop like program structure
+    \item Test other LH parameter sets
+    \item Investigate link between virgin biomass and M etc.
+    \item this is being explored at the ICES WGMG in two weeks  
+  \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

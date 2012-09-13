@@ -1,0 +1,33 @@
+\documentclass{beamer}
+%\usepackage{beamerthemebars}
+
+\include{eu-beamer-template} 
+\usepackage{arev,t1enc}
+\usepackage{amsmath}
+
+\usepackage[T1]{fontenc}
+\fontfamily{verdana}\selectfont
+
+\title{The Costs of Ignoring Stock Structure}
+\subtitle{}
+\author{Colin Millar\\Iago Mosqueira\\Ernesto Jardim\\Chato Osio}
+\institute{European Commission\\ Joint Research Center}
+\subject{Fisheries Management}
+
+\begin{document}
+\setkeys{Gin}{width=1.1\textwidth}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{withoutheadline}
+\begin{frame}{VMS - Vessel Monitoring System}
+  Reports the position of a vessel every 2 hours \\
+  Also reports speed and vessel ID
+  
+\end{frame}
+\end{withoutheadline}
+
+
+\end{document}
