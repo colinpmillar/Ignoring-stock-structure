@@ -1,0 +1,338 @@
+\documentclass{beamer}
+%\usepackage{beamerthemebars}
+
+\include{eu-beamer-template}    % THIS is the line that includes the EU template!
+\usepackage{arev,t1enc}
+\usepackage{amsmath}
+
+\usepackage[T1]{fontenc}
+\fontfamily{verdana}\selectfont
+
+\titleimage{koter} % pdf or png
+\title{The Costs of Ignoring Stock Structure}
+\subtitle{How VMS and logbook data might be used to compliment surveys}
+\author[CP Millar]{Colin Millar}
+\institute[JRC]{European Commission\\ Joint Research Center}
+\date[Sketch 2012]{30 March 2012}
+\subject{Fisheries Management}
+
+\newcommand{\ee}{\stackrel{e}{=}}
+\usepackage{Sweave}
+\SweaveOpts{pdf=TRUE, echo=FALSE, fig=FALSE, eps=FALSE, tidy=TRUE, width=4, height=4, keep.source=TRUE}
+
+\begin{document}
+\setkeys{Gin}{width=1.1\textwidth}
+
+@
+<<setoptions, echo=FALSE>>=
+  library(MASS)
+  options( width = 60 )
+  set.seed(1003900)
+@ 
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\section{Introduction}
+\label{sec:introduction}
+
+\begin{frame}
+\begin{center}
+\LARGE \textbf{$\text{Catch} = q \times \text{Abundance}$}
+\end{center}
+\end{frame}
+
+\begin{frame}{$\text{Catch} = q \times \text{Abundance}$}
+The problem with fishers is that they do not 'sample' \textbf{uniformly}\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig1.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  plot(1:10,1:10, ann=FALSE, axes=FALSE, type="n")
+  abline(h=1:10,v=1:10, col = grey(0.6))
+  loc <- matrix(runif(200, 1, 10), ncol = 2)
+  boats <- function(xy, cex = 1, ...)
+  {
+    for (i in 1:nrow(xy))
+      polygon(cex * 0.2 * c( .5,  1, .7,-.8, -1,-.5,-.5, .5, .5) + xy[i,1], 
+              cex * 0.2 * c(0.2,0.2,-.4,-.4,0.2,0.2,0.5,0.5,0.2) + xy[i,2],
+              border = "black",
+              col = "red")  
+  }
+  boats(loc)
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushleft}
+    A uniform distribution
+    \begin{align*}
+      \text{Index} = \frac{N}{n} \sum_{i=1}^n catch_i    
+    \end{align*}
+    $n =$ no. of samples \\
+    $N =$ no. of sampling units
+  \end{flushleft}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig1}
+  \end{figure}
+\end{minipage}
+
+\end{frame}
+
+\begin{frame}{$\text{Catch} = q \times \text{Abundance}$}
+Fishing tends to be a focused activity\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig2.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  plot(1:10,1:10, ann=FALSE, axes=FALSE, type="n")
+  abline(h=1:10,v=1:10, col = grey(0.6))
+  loc <- matrix(rnorm(200), ncol = 2)
+  Sig <- matrix(c(.8,.5,.5,.8),2,2)
+  mu <- c(5, 6.5)
+  loc <- loc %*% chol(Sig) + rep(mu, each = 100)
+  boats(loc)
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushleft}
+    \begin{align*}
+      \text{Index} \neq \frac{N}{n} \sum_{i=1}^n catch_i    
+    \end{align*}
+    $n =$ no. of samples \\
+    $N =$ no. of sampling units
+  \end{flushleft}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig2}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+
+\begin{frame}{$\text{Catch} = q \times \text{Abundance}$}
+So there is an unequal probability of sampling\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig3.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  res <- 50
+  x <- seq(1, 10, length = res)
+  xx <- cbind(rep(x - mu[1], res), rep(x - mu[2], each = res))
+  z <- matrix(-0.5 * rowSums(xx %*% solve(Sig) * xx), res, res)
+  image(x, x, z, axes = FALSE,
+        col = colorRampPalette(c("purple","cyan"))(19),
+        breaks = quantile(c(z), seq(0, 1, length=20)))  
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushleft}
+    Unequal probability sampling \\
+    Hansen-Hurwitz estimator\\    
+    \begin{align*}
+      \text{Index} = \frac{1}{n} \sum_{i=1}^n \frac{catch_i}{p_i}  
+    \end{align*}
+    $n =$ no. of samples \\
+    $p_i =$ probability of sampling
+  \end{flushleft}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig3}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+\begin{frame}{$\text{Catch} = q \times \text{Abundance}$ (in \alert{fished} area)}
+There are also regions that are never sampled\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig4.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  image(x, x, z, axes = FALSE,
+        col = colorRampPalette(c("purple","cyan"))(19),
+        breaks = quantile(c(z), seq(0.6, 1, length=20)))
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushright}
+    A non uniform distribution with regions of \alert{\textbf{zero}} sampling probability \\
+    \begin{align*}
+      \text{Index}_\text{fished population} & \\
+       = \frac{1}{n} &\sum_{i=1}^n \frac{catch_i}{p_i}  
+    \end{align*}  
+  \end{flushright}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig4}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+
+\begin{frame}{$\text{Catch} = q \times \text{Abundance}$ (in \alert{fished} area)}
+What is the probability of sampling?\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig5.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  zest <- kde2d(loc[,1], loc[,2],n = res, lims = c(1,10,1,10))
+  image(zest, axes = FALSE,
+        col = colorRampPalette(c("purple","cyan"))(19),
+        breaks = quantile(c(zest$z), seq(0.6, 1, length=20)))
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushright}
+    Use the spatial location of fishing pings to estimate the probability of sampling\\
+    \begin{align*}
+      \text{Index}_\text{fished population} & \\
+       = \frac{1}{n} &\sum_{i=1}^n \frac{catch_i}{\hat{p}_i}  
+    \end{align*}  
+  \end{flushright}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig5}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+\begin{frame}{Comparing with Survey Data}
+We can also estimate the surface of $q \times \text{Abundance}$
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig6.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  Aest <- zest
+  Aest $ z <- rbind(Aest $ z[-(1:8),], matrix(0,8,res))
+  Aest $ z[zest $ z < quantile(c(zest$z), 0.6)] <- NA
+  image(Aest, axes = FALSE,
+        col = colorRampPalette(c("orange3","yellow","cyan"))(19),
+        breaks = quantile(c(Aest$z), seq(0, 1, length=20), na.rm=TRUE))
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushright}
+    Use the spatial location of fishing pings and catch observations to estimate a \alert{\textbf{smooth}} density surface
+    \begin{align*}
+      E[catch_i] = D_{loc(i)}  
+    \end{align*}
+    where $D$ has spatial structure    
+  \end{flushright}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig6}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+\begin{frame}{Filling in the gaps}
+To combine we need the ratio in catchabilities\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig7.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  image(Aest, axes = FALSE,
+        col = colorRampPalette(c("orange3","yellow","cyan"))(19),
+        breaks = quantile(c(Aest$z), seq(0, 1, length=20), na.rm=TRUE))
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  sloc <- matrix(runif(30, 1, 10), ncol = 2)
+  points(sloc, pch = 21, cex = .8, bg = "blue", col = "black")  
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushleft}
+    \begin{align*}
+      E[catch_i] &= D_{loc(i)} \\
+      E[survey_j] &= r \times D_{loc(j)}  
+    \end{align*}
+    where
+    \begin{align*}
+      r = \frac{q_{surv}}{q}  
+    \end{align*}    
+  \end{flushleft}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig7}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+\begin{frame}{Filling in the gaps}
+Combining survey and catch data\\
+@
+<<fig1, echo=FALSE>>=
+  pdf(file="fig8.pdf", width=4, height=4)
+  par(mar=c(1,1,.1,.1))
+  image(Aest, axes = FALSE,
+        col = colorRampPalette(c("orange3","yellow","cyan"))(19),
+        breaks = quantile(c(Aest$z), seq(0, 1, length=20), na.rm=TRUE))
+  A2est <- Aest
+  A2est $ z[] <- ifelse(is.na(Aest $ z), 1, NA)  
+  image(A2est, col = "lightblue2", add = TRUE)
+  abline(h=x + diff(x)[1]/2,v=x + diff(x)[1]/2, col = grey(0.6))
+  points(loc, pch = 21, cex = .8, bg = "red", col = "black")
+  sloc <- matrix(runif(30, 1, 10), ncol = 2)
+  points(sloc, pch = 21, cex = .8, bg = "blue", col = "black")  
+  tmp <- dev.off()
+@ 
+\begin{minipage}{0.4\textwidth}
+  \begin{flushleft}
+    \begin{align*}
+      \frac{1}{n} \sum_{i=1}^n \frac{catch_i}{\hat{p}_i} + 
+      r \frac{N_s}{n_s} \sum_{i=1}^{n_s} survey_i
+    \end{align*}
+    \vspace{6pt}
+    $n_s =$ no. of survey samples \\
+    $N_s =$ no. of 'unfished' units \\
+    $r =$ the catchability ratio
+  \end{flushleft}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}{0.4\textwidth}
+  \begin{figure}
+    \centering
+    \includegraphics[width=5.5cm]{fig8}
+  \end{figure}
+\end{minipage}
+\end{frame}
+
+
+\begin{frame}{VMS - Vessel Monitoring System}
+  Reports the position of a vessel every 2 hours \\
+  Also reports speed and vessel ID
+  
+\end{frame}
+
+
+\end{document}
