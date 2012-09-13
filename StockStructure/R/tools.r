@@ -31,6 +31,26 @@ getFunctions <- function(x, show = TRUE)
 	if (show) funs else names(funs)
 }
 
+#' seconds to hrs, mins, secs
+#'
+#' 
+#' @param x seconds
+#' @return Some text
+#' @note \code{helloWorld} is just a test
+#' @author Colin Millar \email{colin.millar@@jrc.ec.europa.eu}
+#' @export
+#' @examples
+#' helloWorld(3435)
+frmtSeconds <- function(x = 1) {
+
+  hrs <- floor(x/60^2)
+  mins <- floor(x/60 - hrs * 60)
+  secs <- x %% 60
+  paste(hrs, "hrs ", mins, "mins ", secs, "s", sep = "")
+}
+
+
+
 #' build a4a and stock structure package
 #'
 #' 

@@ -94,7 +94,7 @@ sim.design <- expand.grid(
     stringsAsFactors = FALSE) 
 
 ASC.brp <- 
-    lapply(1:nrow(sim.design), 
+    mclapply(1:nrow(sim.design), 
         function(i) {
           x <- sim.design[i,]
           nam <- with(x, paste0("linf:", linf, "-v90:", v90 * vrange,"-rmax:", rmax * rrange, "-sr:",sr))
@@ -168,7 +168,7 @@ ASC.brp <-
 #------------------------------------------------------------------------------
 
 ASC.stk <- 
-    lapply(ASC.brp, 
+    mclapply(ASC.brp, 
         function(x) {
           cat(x @ desc, "\n")
           Fc <- c(refpts(x)["crash", "harvest"])
@@ -184,6 +184,8 @@ ASC.stk <-
           out
         })
 
+
+save(ASC.stk, ASC.brp, choices, fname, file = "../presentation/ASC.rda")
 
 
 #====================================================================
@@ -232,6 +234,10 @@ fname <-
                     collapse = ""), 
              ".rda")
 
+       
+save(ASC.stk, ASC.brp, choices, fname, file = "../presentation/ASC.rda")
+       
+       
 #mybuild()
 set.seed(1734876)
 seeds <- sample(1e7, 42)
@@ -242,7 +248,7 @@ seeds <- sample(1e7, 42)
 
 time0 <- proc.time()
 mc.out <-
-lapply(1:1, # nrow(choices),    
+mclapply(1:1, # nrow(choices),    
   function(i) {
     set.seed( seeds[i] )
     x <- choices[i,]

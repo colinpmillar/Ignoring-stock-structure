@@ -236,9 +236,7 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
   #                                   index = index(assessment.index)[,ac(estimate.years)])
   
   time0 <- c(proc.time() - time0)[3]                                
-  cat("\ntotal time:", floor(time0/60/60), "hr", 
-                       floor((time0 - 60*60*floor(time0/60/60))/60), "mins", 
-                       time0 - 60*floor(time0/60), "s\n\n")
+  cat("\ntotal time:", frmtSeconds(time0), "\n\n")
   
   return(OM[,ac(data.years)])
 }
@@ -262,16 +260,9 @@ mse <- function (OM, iniyr, sr.model1, sr.model2,
 doOne <- function(stock.id, Ftarg = 0.75, Btrig = 0.75,
                   start.yr = c(1,1), which.ref = "f0.1") {
   
-#--------------------------------------------------------------------
-# True stock msy reference points
-#--------------------------------------------------------------------
-  refpt1 <- ASC.brp[[stock.id[1]]] @ refpts["msy", c("ssb", "harvest")]
-  refpt2 <- ASC.brp[[stock.id[2]]] @ refpts["msy", c("ssb", "harvest")]
-  
-  
-#--------------------------------------------------------------------
+#====================================================================
 # True stock history
-#--------------------------------------------------------------------
+#====================================================================
   pop1 <- window(ASC.stk[[stock.id[1]]], 
       start = start.yr[1], end = start.yr[1] + nhyr - 1)[1:max.age,]
   pop2 <- window(ASC.stk[[stock.id[2]]], 
@@ -279,26 +270,25 @@ doOne <- function(stock.id, Ftarg = 0.75, Btrig = 0.75,
   dimnames(pop1) <- dimnames(pop2) <- list(year = 2001 - nhyr:1)
   
   true.stock <- pop1
+# expand to three units then keep the last two
   true.stock <- FLCore::expand(true.stock, unit = c("unique", "pop1", "pop2"))[,,2:3]
   
   true.stock[,,1] <- pop1
   true.stock[,,2] <- pop2
   rm(pop1, pop2)
   
-# change fbar here also ...
-  range(true.stock)[c("minfbar", "maxfbar")] <- c(4,8)
+# change plus group to keep sepVPA happy and FLa4a. 
+# if you want to know why ask colin for more details on this hack!
   range(true.stock)["plusgroup"] <- max.age + 1 # to deal sepVPA and a4aFit
-  
   
 #====================================================================
 # Stock recruit model
 #====================================================================
   
-# assume a stock recruitment model for each population and estimate 
-# the parameters from it - this serves as the underlying
-# stock recruitment model
-  sr.model1 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[1]]]))
-  sr.model2 <- list(model = "bevholt", params = params(ASC.brp[[stock.id[2]]]))
+# assume a stock recruitment model for each population form the BRP object
+# this serves as the underlying stock recruitment model
+  sr.model1 <- list(model = model(ASC.brp[[stock.id[1]]]), params = params(ASC.brp[[stock.id[1]]]))
+  sr.model2 <- list(model = model(ASC.brp[[stock.id[2]]]), params = params(ASC.brp[[stock.id[2]]]))
   
 # stock recruit residuals - simulate residuals as lognormal with sd=srsd
   sr.residuals <- FLQuant(rlnorm(npyr * nits, sd = srsd), 
@@ -312,12 +302,10 @@ doOne <- function(stock.id, Ftarg = 0.75, Btrig = 0.75,
 # create OM object
 # Note: stocks are projected at Fsq and the values for the first
 #	intermediate year are used in the projections
-# TODO need to check this for my implentation... 
 #--------------------------------------------------------------------
   
 # fwdWindow extends filling with the contents of FLBRP object
 # default in FLBRP is to use the mean of the last three years
-# this line fails validFLBRP check on unadultarated FLCore
   OM <- fwdWindow(true.stock, FLBRP(true.stock), end = lastyr)
   
 # propagate
@@ -326,21 +314,19 @@ doOne <- function(stock.id, Ftarg = 0.75, Btrig = 0.75,
 # project to the end of projections at last year F level
   Fsq <- c(fbar(OM[, ac(iniyr)]))[1]
   ctrl <- fwdControl( data.frame(year = iniyr:lastyr, quantity = "f", val =  Fsq))
-# if no sr residuals then no noise!
+# if no sr residuals then no noise in historical stock!
   OM[,,1] <- fwd(OM[,,1], ctrl = ctrl, sr = sr.model1)
   OM[,,2] <- fwd(OM[,,2], ctrl = ctrl, sr = sr.model2)
   
 #====================================================================
-# first simulation
+# the mse simulation
 #====================================================================
   
-  base <- mse(OM = OM, iniyr = iniyr, 
+  mse(OM = OM, iniyr = iniyr, 
       sr.model1 = sr.model1, sr.model2 = sr.model2,
       sr.residuals = sr.residuals, 
       Ftarg = Ftarg, Btrig = Btrig,
-      which.ref = which.ref)
-  
-  base        
+      which.ref = which.ref)       
 }        
 
 
