@@ -47,7 +47,7 @@ ibind.stk <- function(obj1, obj2) {
 # first job - combine the output
 files <- data.frame(comp = 1:nrow(choices))
 files[paste0("out", 1:2)] <- 
-    lapply(paste0("out", 1:2), 
+    lapply(paste0("out", 3:4), 
       function(x) 
         1:42 %in% sort(as.numeric(gsub("-", "", substring(dir(x), 6, 7)))))
 
@@ -55,12 +55,12 @@ comps <- lapply(1:42,
     function(i) {
       out1 <- out2 <- NULL
       if (files $ out1[i]) {
-        load(paste0("out1/", fname(i)))
+        load(paste0("out3/", fname(i)))
         out1 <- get(paste0("comp", i))
       } 
 
       if (files $ out2[i]) {
-        load(paste0("out2/", fname(i)))
+        load(paste0("out4/", fname(i)))
         out2 <- get(paste0("comp", i))
       } 
 
@@ -121,6 +121,32 @@ tsb.prop <- lapply(1:42, function(i) propSummary(comps[[i]], fun = tsb))
 catch.prop <- lapply(1:42, function(i) propSummary(comps[[i]], fun = catch))
 
 save.image("presentation-data.rda")
+
+pdf("tex/full-result1.pdf")
+plotOM(comps[[1]])
+dev.off()
+
+pdf("tex/full-result2.pdf")
+plotOM(comps[[3]])
+dev.off()
+
+
+
+## results summary
+
+
+res <- choices
+
+res $ tsb.prop <- sapply(tsb.prop, function(x) x["mean", "pop1"])
+res $ tsb.ratio <- sapply(tsb.ratio, function(x) x["mean"])
+res $ catch.prop <- sapply(catch.prop, function(x) x["mean", "pop1"])
+res $ catch.ratio <- sapply(catch.ratio, function(x) x["mean"])
+
+    
+subset(res, s1 %in% 1)
+
+xyplot(tsb.prop ~ I(s2 %% 6 + 1) | factor(s1), data = res)
+
 
 
 

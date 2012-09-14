@@ -16,13 +16,14 @@
 \begin{document}
 \setkeys{Gin}{width=1.1\textwidth}
 
-% set up R environment
-<<echo=FALSE, results=hide>>=
-library(RColorBrewer)
-library(lattice)
-library(xtable)
-library(Hmisc)
-@
+%% set up R environment
+%<<echo=FALSE, results=hide>>=
+%library(RColorBrewer)
+%library(lattice)
+%library(xtable)
+%library(Hmisc)
+%load("../presentation-data.rda")
+%@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -63,23 +64,68 @@ library(Hmisc)
 
 \begin{withoutheadline}
 \begin{frame}{Simulation Design}
-  Population model
+  The Population Model
+  \begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{Population-model-half}
+  \end{figure}
 \end{frame}
 \end{withoutheadline}
+
+
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  The Population Model
+  \begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{Population-model}
+  \end{figure}
+\end{frame}
+\end{withoutheadline}
+
+\begin{withoutheadline}
+\begin{frame}{Simulation Design}
+  The Population Model: candidate model for
+  \begin{itemize}
+    \item Lophius Piscatorius and Budagassa
+    \item Atlantic Blue-Fin Tuna
+    \item Whitining in the North Sea...?
+  \end{itemize}
+\end{frame}
+\end{withoutheadline}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \begin{withoutheadline}
 \begin{frame}{Simulation Design}
-  Observation model
+  Assessment inputs:
+  \begin{align*}
+    \text{Observed log Catch} &\sim \text{Normal}(\log \text{Catch}, 0.1) \\
+    \text{Observed log Index} &\sim \text{Normal}(\log \text{Index}, 0.1)
+  \end{align*}
+  \begin{minipage}{0.4\textwidth}
+  \begin{align*}
+    \text{Catch} &= \text{Catch}_1 + \text{Catch}_2 \\
+    \text{Index} &= q \times (N_1 + N_2)
+  \end{align*}
+  \end{minipage}
+  \begin{minipage}{0.4\textwidth}
+  \begin{align*}
+    M &= 0.5 (M_1 + M_2) \\
+    \text{Mat} &= 0.5 (\text{Mat}_1 + \text{Mat}_2) \\
+    \text{wt} &= \frac{N_1 \text{wt}_1 + N_2 \text{wt}_2 }{N_1 + N_2}
+  \end{align*}
+  \end{minipage}
 \end{frame}
 \end{withoutheadline}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{withoutheadline}
 \begin{frame}{Simulation Design}
-  Management procedure
+  Assessment Model and Management procedure
 \end{frame}
 \end{withoutheadline}
 
@@ -95,7 +141,7 @@ library(Hmisc)
 
 \begin{withoutheadline}
 \begin{frame}{Simulation design}
-  The MSE diagram
+  The MSE diagram \\
   A picture of the set up, with arrows that show the data input, 2 stocks into 1 data set and a MP that goes from TAC to F
 \end{frame}
 \end{withoutheadline}
@@ -108,7 +154,7 @@ library(Hmisc)
     \item the lh() function
     \item the gislasim function
     \item recruitment levels - ICES north sea estimates
-    \item shapes designed to be viable under fishing
+    \item Stock recruit curve shapes designed to be viable under fishing
   \end{itemize}  
 \end{frame}
 \end{withoutheadline}
@@ -134,6 +180,19 @@ Show table of what scenarios
 
 \begin{withoutheadline}
 \begin{frame}{One full result}
+  \begin{figure}
+  \flushright
+  \includegraphics[width=.7\textwidth]{full-result1}
+  \end{figure}
+\end{frame}
+\end{withoutheadline}
+
+\begin{withoutheadline}
+\begin{frame}{One full result}
+  \begin{figure}
+  \flushleft
+  \includegraphics[width=.7\textwidth]{full-result2}
+  \end{figure}
 \end{frame}
 \end{withoutheadline}
 
@@ -141,6 +200,7 @@ Show table of what scenarios
 
 \begin{withoutheadline}
 \begin{frame}{Results Summary}
+
 \end{frame}
 \end{withoutheadline}
 
@@ -148,10 +208,10 @@ Show table of what scenarios
 
 \begin{frame}{Final Thoughts}
   \begin{itemize}
-    \item Improve simulation speed by running hadoop like program structure
+    \item Improve simulation speed by running in parallel on clusters
     \item Test other LH parameter sets
     \item Investigate link between virgin biomass and M etc.
-    \item this is being explored at the ICES WGMG in two weeks  
+    \item these is being explored at the ICES WGMG in two weeks  
   \end{itemize}
 \end{frame}
 
