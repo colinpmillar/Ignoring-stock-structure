@@ -1,0 +1,124 @@
+slide 1 - title page
+
+Hello, my name is Colin Millar i work in a team of fisheries modellers and computer geeks in the joint research center in Ispra and i am here to talk about the costs of ignoring stock structure.
+
+slide 2 - motivation
+
+Our motivation began with the a4a (assessment for all) initiative which ains to provide methids to manage stocks with moderate data series.  This comes from the observation that by 2020 there will be nearly 250 stocks with data series.
+
+one discussion was some blue sky thinking on how genetics could improve stock assessment and management and by the end we aggreed that what could be the area of most practical relavence is stock identity.  And so we began to think about the consequences of stock structure from this point of view.
+
+Slide 3
+
+So what are the impacts of managing... or not managing sub stocks?  Does it make any difference? We know from early work by Ricker that differnces in productivity can lead to extinction of the least productive stock and it is this issue that we investigate. So what has changed in 55 years, why revisit this? In a word Computers! The general conclusions are the same, but where Ricker worked numerically we use simulations.
+
+
+Slide 4 - Aims
+
+Focusing on the problem of sub units having different life histories and productivities while living in reproductive isolation, we Investigate managing two sub-units as one stock... or equivalently, two stocks managed as one stock
+
+Examples...
+
+The most clear cut examples of this scenario is the case of mixed species caught in one fishery, and a nice example of this is monkfish where the two species L. piscatorious and L. budagassa (the black bellied anglerfish).  And in mackerel fisheries south of spain, Scomber scombrus and S japonicus are caught together.  Catches can be split afterwards, but there is no way to decouple these fisheries.
+
+But the sitation also arises if there are two sub-units with different productivities that to not inter breed due to spatial seperation in spawing together with natal homing, or due to genetic difference perhaps spawning occurs at different times of year.  Things may not be as clear cut as this in many cases, but in this sense we consider our scenario as providing precuationary results.
+
+slide 6 - Secondary aims
+
+We also have some additional aims in completing this work which were to 
+achieve some a4a initiative objectives - such as ...
+developing a statistical catch at age model that is robust (in terms of fitting and in terms of parameter estimation) and quick
+developing a flexible testing framework which involves coming up with simulations that are resonable models of exploited fish stocks
+and to develop this into a fairly general purpose Management strategy evaluation algorithm that will allow us to stress test the methods that are developed and see in which situations they fail.
+
+Slide 6 - Outline
+
+So the outline of the talk:
+
+We will go over the design of the simulation briefly, looking at structure of the simulation which borrows much from the design of a management strategy evaluation and visit briefly the harvest control rule used, but i should stress that we are not evaluating the harvest control rule, we are looking more at the consequences of mismanaging the sub stocks.
+
+Then, of course to make it relavent we need plausible parameter values for these model in the simulation.
+
+And then I will spend a bit of time going over the scenarios so we are clear on the questions we are askin and how we are answering them
+
+and from here we will move on to our results and close with some final thoughts.
+
+Slide 7 - The simulation design
+
+So, this is the typical management strategy figure tailored to the case in point.  The things to notice are that we have two populations / units / substocks each with thier own life history and stock recruit relationship.  And this is how we define the populations.  There is also only one fleet with a fixed selectivity that operates uniformly over the two sub stocks, so both poulations share the same F at age.  
+
+This system or operating model is observed, creating data for the assessment process, and the observations are combined across the stock, for example, catches, weights at age, survey indices etc.  Then we apply a HCR which results in advice in the form of a TAC.
+
+FInally the TAC is translated to an F by the fleet as it fishes the stocks together until the TAC is reached.  An this concludes one year in our simulation.
+
+Slide 8 - The HCR
+
+So this is the harvest control rule we apply, commonly applied in ICES.  We had planned to use 0.75 of Fmsy and 0.75 of Bmsy as the parameters of this rule, estimating these reference points annually. But had to use F0.1 in some scenarios due to very poorly estimated MSY refence points driven by the shape of the stock recruit curve used. I'll come back to this breifly when we present the initial stock simulations
+
+Slide 9 - Choosing parameter values
+
+One of the problems of simulations that they are exactly that - simulations.  They are not real stocks we are working with but abstractions, simplifications.  We beileve that a resonable approxiations to stock dynamics can be got by using a realistic set of life history parameters.  Aiming to be non-specific we try to step back from looking at one species and tried to take a general view or an average view and supporting us in this is the relationships between several life history parameters found in Gislason et al. Allowing us to produce values of age at 50% maturity, natural mortalty and the vonB growth param K from a single value of Linfinity. 
+
+We also need to provide weight lentgh relationship, t0 in the von B which were taken from a subset of FishBase and we used the ices stock assesment database to provide the level of recruitment and then changed the slopes of the SRR curves to provide fiablstocks under observed Fs fishing.
+
+Slide 10 - The simulated sub stocks
+
+The relationships in Gislason especially natural mortality are tuned to the North Sea and so we restrict ourselves to the north sea and even further to north sea demersal stocks... relfected in the choice of Linf values
+
+The weight length relationship, t0 in the von B which were taken from FishBase from north sea demersal types, 
+
+You might have the impression that i am trying very hard not to say the word cod... and wel that might be true ;)
+
+Finally as we are moving in a demersal direction we opted for a trawl fishery selection function with full selection at age 4, so this is quite a large mesh fishery.  It would be nice to relate the selectivity to the growth of the fish by incorporating a girth growth parameter, but this is future work.
+
+
+Slide 11 - 
+
+Continuing our north sea demersal theme, the recruitment parameters, or more correctly recruitment level was informed by the north sea stocks in the ICES stock assessment data base.  
+
+I say informed because we had to play a bit wit these to produce curves with a realistic maximum recruitment, similar curves at the origin for comparability and produce stocks that are viable under fishing.
+
+What we have chosen is two levels of maximum recruitment and two shapes - the beverton holt and the ricker models.  Really what we are trying to test here is the effect of diffrent levels of productivity / recruit producing capacity and the effect of depensation.
+
+Slide 12 - The simulated stocks
+
+Finally we piece all this together to produce a population that we can run tests on.  We generate these populations by starting each one at the level they would have in the absence of fishing (and competition) and fish them with increasing F for 40 years (to replicate loosly the development of fishing in the North Sea).
+
+From this point on we choose differnt sub stocks to compare and manage as one.
+
+Slide 13-18 - Scenarios
+
+
+Slide 19-20 - full results
+
+19.
+So the fruits of our labour.  This slide shows what happens in our simulation when we manage two sub units with L infinities of 60 and the beverton Holt SRR model with the lower maximum recruitment.  The point to take from this slide, is that both stocks *are* being mangaged correctly the HCR IS working and begins to recover both sub-stocks.  The same is seen in all of the control cases.
+
+20.
+In this slide we show the simulation of a stock with Linf 60 with a stock with an Linf of 100 where both have ricker recruitment with low maximum recruitment.  And the effect here is that the more productive stock recovers while the least prodictive stock continues to decline.  So in this case the MP fails to protect both substocks.  And the reason for this we can see is that the estimated reference points recommend a TAC that resilts in an F close to the high F of the less productive stock.  And actually over time as the sub stock is fished out, there is less misspecification in the MP and the variability reduces.
+
+Slide 21 - Ecosystem changes
+
+To summaries our results we present two statisics telling us about Ecosytem changes and  relative stock status.  
+
+This figure show the changes in total stock biomass ratio between the start of the simulation - when we started to jointly manage the stocks - and the 30 years later.  Nominally 2000 and 2029.  What we see is, most strikingly is that a model with depensation results in bigger differences between substocks.
+
+The second point to note is that differnces in growth have a bigger effect at smaller growths, so the effect of difference in Linf is non linear.
+
+And when the diffence between stocks is growth and recruitment the effect is a bit more.
+
+Slide 22 - Relative stock status
+
+This slide condences our results on relative stock status.  We define status as being B/Bmsy and we consider the relative status of the less productive stock to the more productive stock as S1 / S2.
+
+The control tests are these diagonals on the first to columns, and the size of these circles is approximately 1.  We are still developing ways to present this information so that it is not too dense. And i think this plot reiterates well the findings in the previous slide:  that differnces in Linf at smaller sizes have a bigger effect that at big sizes.  Depensation results in stronger effects.  Also we see here that recruitment level has an impact and in our set up this impact is greater, which is probably due to our simulation design.  Finally if there are diffences in growth and recruitment the effect is greater.
+
+Slide 23 - Final thoughts
+
+
+
+
+
+
+
+

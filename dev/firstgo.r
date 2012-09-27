@@ -173,7 +173,7 @@ ASC.stk <-
           cat(x @ desc, "\n")
           Fc <- c(refpts(x)["crash", "harvest"])
           Fmsy <- c(refpts(x)["msy", "harvest"])
-          nFc <- 60
+          nFc <- 40
           Ftrg <- c(exp( seq(log(Fmsy), log(Fc), len = nFc) ), 
               seq(Fc, Fmsy, len = 5), 
               rep(Fmsy, 95 - nFc))
@@ -184,8 +184,6 @@ ASC.stk <-
           out
         })
 
-
-save(ASC.stk, ASC.brp, choices, fname, file = "../presentation/ASC.rda")
 
 
 #====================================================================
@@ -235,7 +233,7 @@ fname <-
              ".rda")
 
        
-save(ASC.stk, ASC.brp, choices, fname, file = "../presentation/ASC.rda")
+save(sim.design, ASC.stk, ASC.brp, choices, fname, file = "../presentation/ASC.rda")
        
        
 #mybuild()
